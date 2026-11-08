@@ -7,6 +7,8 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.media.AudioAttributes
+import android.media.SoundPool
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -46,6 +48,13 @@ class MainActivity : Activity() {
     private lateinit var numberInput: EditText
     private lateinit var previousButton: TextView
     private lateinit var nextButton: TextView
+    private lateinit var soundButton: TextView
+
+    // DEEP PULSE SES SİSTEMİ
+    private var soundPool: SoundPool? = null
+    private var soundId = 0
+    private var soundLoaded = false
+    private var soundEnabled = true
 
     private var currentIndex = 0
     private var running = false
@@ -76,7 +85,7 @@ class MainActivity : Activity() {
             if (!running) return
 
             if (currentIndex < values.lastIndex) {
-                showIndex(currentIndex + 1)
+                showIndex(currentIndex + 1, true)
                 handler.postDelayed(this, getInterval())
             } else {
                 stopPlayback()
@@ -91,8 +100,57 @@ class MainActivity : Activity() {
         window.statusBarColor = backgroundColor
         window.navigationBarColor = backgroundColor
 
+        initializeSound()
         buildUi()
         refresh()
+    }
+
+    // DEEP PULSE SESİNİ YÜKLE
+    private fun initializeSound() {
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+
+        soundPool = SoundPool.Builder()
+            .setMaxStreams(2)
+            .setAudioAttributes(audioAttributes)
+            .build()
+
+        soundPool?.setOnLoadCompleteListener { _, sampleId, status ->
+            if (status == 0 && sampleId == soundId) {
+                soundLoaded = true
+            }
+        }
+
+        soundId = soundPool?.load(this, R.raw.ur52_deep_pulse, 1) ?: 0
+    }
+
+    private fun playTransitionSound() {
+        if (!soundEnabled || !soundLoaded || soundId == 0) return
+
+        soundPool?.play(
+            soundId,
+            0.85f,
+            0.85f,
+            1,
+            0,
+            1.0f
+        )
+    }
+
+    private fun updateSoundButton() {
+        if (!::soundButton.isInitialized) return
+
+        if (soundEnabled) {
+            soundButton.text = "♫  SES AÇIK"
+            soundButton.background = rounded(orange, 12)
+            soundButton.setTextColor(white)
+        } else {
+            soundButton.text = "♫  SES KAPALI"
+            soundButton.background = rounded(backgroundColor, 12)
+            soundButton.setTextColor(muted)
+        }
     }
 
     private fun dp(value: Int): Int =
@@ -437,14 +495,14 @@ class MainActivity : Activity() {
 
         previousButton.setOnClickListener {
             if (currentIndex > 0) {
-                showIndex(currentIndex - 1)
+                showIndex(currentIndex - 1, true)
                 if (running) restartTimer()
             }
         }
 
         nextButton.setOnClickListener {
             if (currentIndex < values.lastIndex) {
-                showIndex(currentIndex + 1)
+                showIndex(currentIndex + 1, true)
                 if (running) restartTimer()
             }
         }
@@ -501,6 +559,30 @@ class MainActivity : Activity() {
         )
 
         controlCard.addView(playbackRow)
+
+        // SES AÇMA / KAPAMA DÜĞMESİ
+
+        addGap(controlCard, 7)
+
+        soundButton = makeButton("♫  SES AÇIK", orange)
+        soundButton.setOnClickListener {
+            soundEnabled = !soundEnabled
+            updateSoundButton()
+
+            status.text = if (soundEnabled) {
+                "Deep Pulse sesi açıldı."
+            } else {
+                "Deep Pulse sesi kapatıldı."
+            }
+        }
+
+        controlCard.addView(
+            soundButton,
+            LinearLayout.LayoutParams(-1, -2)
+        )
+
+        updateSoundButton()
+
         page.addView(controlCard)
 
         addGap(page, 5)
@@ -696,10 +778,15 @@ class MainActivity : Activity() {
             "${values.size} kayıt hazır • ${if (mode == Mode.QR) "QR KOD" else "CODE128"}"
     }
 
-    private fun showIndex(index: Int) {
+    private fun showIndex(index: Int, playSound: Boolean = false) {
         if (values.isEmpty()) return
 
         currentIndex = index.coerceIn(0, values.lastIndex)
+
+        // Yalnızca gerçek barkod geçişlerinde ses çal.
+        if (playSound) {
+            playTransitionSound()
+        }
 
         val value = values[currentIndex]
         val selectedMode = mode
@@ -836,6 +923,10 @@ class MainActivity : Activity() {
         stopPlayback()
         generationToken++
         imageExecutor.shutdownNow()
+
+        soundPool?.release()
+        soundPool = null
+
         super.onDestroy()
     }
 }
