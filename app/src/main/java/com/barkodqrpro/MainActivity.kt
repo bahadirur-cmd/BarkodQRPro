@@ -281,7 +281,7 @@ class MainActivity : Activity() {
         )
 
         val subtitle = TextView(this).apply {
-            text = "CODE GENERATION SYSTEM"
+            text = "KOD OLUŞTURMA SİSTEMİ"
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(orangeLight)
@@ -559,7 +559,7 @@ class MainActivity : Activity() {
 
         titleArea.addView(brandTitle)
         titleArea.addView(
-            text("CODE GENERATION SYSTEM", 9f, orangeLight, true)
+            text("KOD OLUŞTURMA SİSTEMİ", 9f, orangeLight, true)
         )
 
         header.addView(
@@ -622,9 +622,9 @@ class MainActivity : Activity() {
             soundEnabled = !soundEnabled
             updateSoundButton()
             status.text = if (soundEnabled) {
-                "Deep Pulse sesi açıldı."
+                "Derin Vuruş sesi açıldı."
             } else {
-                "Deep Pulse sesi kapatıldı."
+                "Derin Vuruş sesi kapatıldı."
             }
         }
 
@@ -870,7 +870,7 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
-        controlHeader.addView(text("PLAYBACK", 9f, orangeLight, true))
+        controlHeader.addView(text("OYNATMA", 9f, orangeLight, true))
         controlCard.addView(controlHeader)
         addGap(controlCard, 10)
 
@@ -1018,7 +1018,7 @@ class MainActivity : Activity() {
         // ALT İMZA
 
         val footer = TextView(this).apply {
-            text = "UR52 CODEX  •  CODE GENERATION SYSTEM"
+            text = "UR52 CODEX  •  KOD OLUŞTURMA SİSTEMİ"
             textSize = 8f
             letterSpacing = 0.12f
             gravity = Gravity.CENTER
@@ -1090,7 +1090,7 @@ class MainActivity : Activity() {
         titleArea.addView(title)
 
         titleArea.addView(
-            text("CONTROL CENTER", 10f, orangeLight, true)
+            text("KONTROL MERKEZİ", 10f, orangeLight, true)
         )
 
         header.addView(
@@ -1182,12 +1182,12 @@ class MainActivity : Activity() {
 
         addGap(page, 12)
 
-        // 02 SES MOTORU
+        // 02 SES SİSTEMİ
 
         val soundCard = makeCard()
 
         soundCard.addView(
-            text("02  /  SES MOTORU", 11f, orangeLight, true)
+            text("02  /  SES SİSTEMİ", 11f, orangeLight, true)
         )
 
         addGap(soundCard, 12)
@@ -1202,7 +1202,7 @@ class MainActivity : Activity() {
         }
 
         soundInfo.addView(
-            text("Deep Pulse", 14f, primaryText, true)
+            text("Derin Vuruş", 14f, primaryText, true)
         )
 
         soundInfo.addView(
@@ -1316,12 +1316,12 @@ class MainActivity : Activity() {
 
         addGap(page, 12)
 
-        // 04 SİSTEM BİLGİSİ
+        // 04 SİSTEM BİLGİLERİ
 
         val infoCard = makeCard()
 
         infoCard.addView(
-            text("04  /  SİSTEM BİLGİSİ", 11f, orangeLight, true)
+            text("04  /  SİSTEM BİLGİLERİ", 11f, orangeLight, true)
         )
 
         addGap(infoCard, 14)
@@ -1346,18 +1346,19 @@ class MainActivity : Activity() {
         }
 
         addInfoRow("Uygulama", "UR52 CODEX")
-        addInfoRow("Motor", "CODE GENERATION")
-        addInfoRow("Barkod formatı", "CODE128")
-        addInfoRow("Kare kod", "QR")
-        addInfoRow("Arayüz", "PREMIUM EDITION")
-        addInfoRow("Durum", "SYSTEM ONLINE")
+        addInfoRow("Kod motoru", "KOD OLUŞTURMA")
+        addInfoRow("Barkod biçimi", "CODE128")
+        addInfoRow("Kare kod biçimi", "QR")
+        addInfoRow("Arayüz", "ÖZEL SÜRÜM")
+        addInfoRow("Sistem durumu", "SİSTEM HAZIR")
+        addInfoRow("Tasarlayan", "Bahadır UR")
 
         page.addView(infoCard)
 
         addGap(page, 22)
 
         val footer = TextView(this).apply {
-            text = "DESIGNED FOR SPEED.\nBUILT FOR PRECISION."
+            text = "HIZ İÇİN TASARLANDI.\nHASSASİYET İÇİN GELİŞTİRİLDİ."
             textSize = 10f
             gravity = Gravity.CENTER
             letterSpacing = 0.12f
@@ -1436,7 +1437,7 @@ class MainActivity : Activity() {
         startActivityForResult(intent, PICK_TXT)
     }
 
-    @Deprecated("Deprecated Android API retained for compatibility")
+    @Deprecated("Eski Android sürümleriyle uyumluluk için korunmuştur")
     override fun onActivityResult(
         requestCode: Int,
         resultCode: Int,
