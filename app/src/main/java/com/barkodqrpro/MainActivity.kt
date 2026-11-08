@@ -29,6 +29,7 @@ class MainActivity : Activity() {
     private val imageViews = mutableListOf<ImageView>()
 
     private var rowHeight = 190
+
     private lateinit var container: LinearLayout
     private lateinit var scroller: ScrollView
     private lateinit var status: TextView
@@ -73,6 +74,7 @@ class MainActivity : Activity() {
         return GradientDrawable().apply {
             setColor(color)
             cornerRadius = dp(radius).toFloat()
+
             if (strokeColor != Color.TRANSPARENT) {
                 setStroke(dp(1), strokeColor)
             }
@@ -90,7 +92,10 @@ class MainActivity : Activity() {
             textSize = size
             setTextColor(color)
             gravity = Gravity.CENTER_VERTICAL
-            if (bold) setTypeface(null, Typeface.BOLD)
+
+            if (bold) {
+                setTypeface(null, Typeface.BOLD)
+            }
         }
     }
 
@@ -281,13 +286,16 @@ class MainActivity : Activity() {
         speed = SeekBar(this).apply {
             max = 19
             progress = 4
+
             progressTintList =
                 android.content.res.ColorStateList.valueOf(orange)
+
             thumbTintList =
                 android.content.res.ColorStateList.valueOf(orangeLight)
 
             setOnSeekBarChangeListener(
                 object : SeekBar.OnSeekBarChangeListener {
+
                     override fun onProgressChanged(
                         seekBar: SeekBar?,
                         progress: Int,
@@ -297,6 +305,7 @@ class MainActivity : Activity() {
                     }
 
                     override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
                     override fun onStopTrackingTouch(seekBar: SeekBar?) {}
                 }
             )
@@ -337,10 +346,13 @@ class MainActivity : Activity() {
             }
         )
 
+        // DÜZELTİLDİ: marginHorizontal yerine iki ayrı kenar boşluğu
+
         controls.addView(
             stopButton,
             LinearLayout.LayoutParams(0, -2, 1f).apply {
-                marginHorizontal = dp(5)
+                marginStart = dp(5)
+                marginEnd = dp(5)
             }
         )
 
@@ -393,13 +405,17 @@ class MainActivity : Activity() {
     }
 
     private fun updateTabs() {
+
         if (mode == Mode.BARCODE) {
+
             barcodeTab.background = rounded(orange, 14)
             barcodeTab.setTextColor(white)
 
             qrTab.background = rounded(backgroundColor, 14)
             qrTab.setTextColor(white)
+
         } else {
+
             qrTab.background = rounded(orange, 14)
             qrTab.setTextColor(white)
 
@@ -409,9 +425,11 @@ class MainActivity : Activity() {
     }
 
     private fun addSamples() {
+
         stopScroll()
 
         values.clear()
+
         values.addAll(
             listOf(
                 "123456789012",
@@ -428,6 +446,7 @@ class MainActivity : Activity() {
     }
 
     private fun pickTxt() {
+
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "text/plain"
@@ -445,10 +464,13 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
 
         if (requestCode == PICK_TXT && resultCode == RESULT_OK) {
+
             val uri = data?.data ?: return
 
             try {
+
                 contentResolver.openInputStream(uri)?.use { stream ->
+
                     val incoming = BufferedReader(
                         InputStreamReader(stream, Charsets.UTF_8)
                     ).readLines()
@@ -463,6 +485,7 @@ class MainActivity : Activity() {
                 status.text = "${values.size} kayıt başarıyla yüklendi."
 
             } catch (e: Exception) {
+
                 status.text = "Dosya okunamadı: ${e.localizedMessage}"
             }
         }
@@ -497,6 +520,7 @@ class MainActivity : Activity() {
 
         for (x in 0 until width) {
             for (y in 0 until height) {
+
                 bitmap.setPixel(
                     x,
                     y,
@@ -576,6 +600,7 @@ class MainActivity : Activity() {
                     ?: return@forEachIndexed
 
                 if (view.tag != value) {
+
                     try {
                         view.setImageBitmap(makeBitmap(value))
                         view.tag = value
@@ -622,10 +647,13 @@ class MainActivity : Activity() {
                             scroller.scrollY >=
                             container.height - scroller.height
                         ) {
+
                             scroller.postDelayed({
+
                                 if (running) {
                                     scroller.scrollTo(0, 0)
                                 }
+
                             }, 250)
                         }
                     }
@@ -637,6 +665,7 @@ class MainActivity : Activity() {
                     )
 
                 } catch (_: InterruptedException) {
+
                     break
                 }
             }
@@ -701,13 +730,16 @@ class MainActivity : Activity() {
                     )
 
                     if (uri != null) {
+
                         contentResolver.openOutputStream(uri)?.use {
+
                             bitmap.compress(
                                 Bitmap.CompressFormat.PNG,
                                 100,
                                 it
                             )
                         }
+
                         saved++
                     }
 
@@ -717,6 +749,7 @@ class MainActivity : Activity() {
                 }
 
                 if (index % 25 == 0) {
+
                     runOnUiThread {
                         status.text =
                             "PNG kaydediliyor: ${index + 1}/${items.size}"
@@ -725,6 +758,7 @@ class MainActivity : Activity() {
             }
 
             runOnUiThread {
+
                 status.text =
                     "$saved PNG kaydedildi. Galeri > Pictures/BarkodQRPro"
             }
@@ -740,14 +774,18 @@ class MainActivity : Activity() {
         val oldMode = mode
 
         return try {
+
             mode = selectedMode
             makeBitmap(value)
+
         } finally {
+
             mode = oldMode
         }
     }
 
     override fun onDestroy() {
+
         stopScroll()
         super.onDestroy()
     }
