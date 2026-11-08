@@ -1,4 +1,3 @@
-
 package com.barkodqrpro
 
 import android.app.Activity
@@ -50,7 +49,7 @@ class MainActivity : Activity() {
     private lateinit var nextButton: TextView
     private lateinit var soundButton: TextView
 
-    // DEEP PULSE SES SİSTEMİ
+    // DEEP PULSE SES SISTEMI
     private var soundPool: SoundPool? = null
     private var soundId = 0
     private var soundLoaded = false
@@ -101,11 +100,131 @@ class MainActivity : Activity() {
         window.navigationBarColor = backgroundColor
 
         initializeSound()
-        buildUi()
-        refresh()
+        showSplashScreen()
     }
 
-    // DEEP PULSE SESİNİ YÜKLE
+    // UR52 CODEX ACILIS EKRANI
+    private fun showSplashScreen() {
+
+        val splash = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setBackgroundColor(backgroundColor)
+            setPadding(dp(24), dp(24), dp(24), dp(24))
+        }
+
+        val logo = ImageView(this).apply {
+            setImageResource(R.drawable.barkodqr_logo)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            alpha = 0f
+            scaleX = 0.75f
+            scaleY = 0.75f
+        }
+
+        splash.addView(
+            logo,
+            LinearLayout.LayoutParams(dp(150), dp(150))
+        )
+
+        val brand = TextView(this).apply {
+            textSize = 30f
+            gravity = Gravity.CENTER
+            typeface = Typeface.create(
+                "sans-serif-condensed",
+                Typeface.BOLD_ITALIC
+            )
+            letterSpacing = 0.08f
+            alpha = 0f
+
+            text = SpannableString("UR52 CODEX").apply {
+                setSpan(
+                    ForegroundColorSpan(Color.rgb(220, 225, 230)),
+                    0, 2, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                setSpan(
+                    ForegroundColorSpan(orange),
+                    2, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                setSpan(
+                    ForegroundColorSpan(white),
+                    5, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+        }
+
+        splash.addView(
+            brand,
+            LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = dp(18)
+            }
+        )
+
+        val subtitle = TextView(this).apply {
+            text = "CODE GENERATION SYSTEM"
+            textSize = 11f
+            gravity = Gravity.CENTER
+            setTextColor(orangeLight)
+            letterSpacing = 0.18f
+            alpha = 0f
+        }
+
+        splash.addView(
+            subtitle,
+            LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = dp(8)
+            }
+        )
+
+        val lightLine = View(this).apply {
+            background = rounded(orange, 4)
+            alpha = 0f
+            scaleX = 0f
+        }
+
+        splash.addView(
+            lightLine,
+            LinearLayout.LayoutParams(dp(190), dp(3)).apply {
+                topMargin = dp(24)
+            }
+        )
+
+        setContentView(splash)
+
+        logo.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(650)
+            .start()
+
+        brand.animate()
+            .alpha(1f)
+            .setStartDelay(350)
+            .setDuration(550)
+            .start()
+
+        subtitle.animate()
+            .alpha(1f)
+            .setStartDelay(550)
+            .setDuration(550)
+            .start()
+
+        lightLine.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .setStartDelay(650)
+            .setDuration(500)
+            .start()
+
+        handler.postDelayed({
+            if (!isFinishing) {
+                buildUi()
+                refresh()
+            }
+        }, 2100)
+    }
+
+    // DEEP PULSE SESINI YUKLE
     private fun initializeSound() {
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
@@ -783,7 +902,6 @@ class MainActivity : Activity() {
 
         currentIndex = index.coerceIn(0, values.lastIndex)
 
-        // Yalnızca gerçek barkod geçişlerinde ses çal.
         if (playSound) {
             playTransitionSound()
         }
@@ -922,6 +1040,7 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         stopPlayback()
         generationToken++
+        handler.removeCallbacksAndMessages(null)
         imageExecutor.shutdownNow()
 
         soundPool?.release()
