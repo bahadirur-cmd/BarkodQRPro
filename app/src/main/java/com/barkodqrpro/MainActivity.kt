@@ -19,6 +19,7 @@ import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.widget.*
 import android.util.LruCache
@@ -57,13 +58,16 @@ class MainActivity : Activity() {
     private var soundEnabled = true
 
     private var isDarkTheme = true
-
     private var currentIndex = 0
     private var running = false
     private var generationToken = 0
 
     private val handler = Handler(Looper.getMainLooper())
     private val imageExecutor = Executors.newSingleThreadExecutor()
+
+    private val preferences by lazy {
+        getSharedPreferences("ur52_preferences", MODE_PRIVATE)
+    }
 
     private val bitmapCache = object : LruCache<String, Bitmap>(
         (Runtime.getRuntime().maxMemory() / 1024 / 8).toInt()
@@ -102,7 +106,7 @@ class MainActivity : Activity() {
             statusBarColor = Color.rgb(15, 19, 24)
         } else {
             backgroundColor = Color.rgb(242, 245, 248)
-            cardColor = Color.rgb(255, 255, 255)
+            cardColor = Color.WHITE
             innerColor = Color.rgb(235, 239, 243)
             white = Color.rgb(31, 39, 48)
             muted = Color.rgb(105, 117, 128)
@@ -130,26 +134,30 @@ class MainActivity : Activity() {
     }
 
     private fun loadThemePreference() {
-        val preferences = getSharedPreferences(
-            "ur52_preferences",
-            MODE_PRIVATE
-        )
-
         isDarkTheme = preferences.getBoolean("dark_theme", true)
         applyThemeColors()
     }
 
     private fun saveThemePreference() {
-        getSharedPreferences(
-            "ur52_preferences",
-            MODE_PRIVATE
-        ).edit()
+        preferences.edit()
             .putBoolean("dark_theme", isDarkTheme)
             .apply()
     }
 
+    // HIZ AYARI KAYDI
+
+    private fun loadSpeedPreference(): Int {
+        return preferences.getInt("speed_level", 9).coerceIn(1, 20)
+    }
+
+    private fun saveSpeedPreference(level: Int) {
+        preferences.edit()
+            .putInt("speed_level", level.coerceIn(1, 20))
+            .apply()
+    }
+
     private fun toggleTheme() {
-        val oldSpeed = if (::speed.isInitialized) speed.progress else 4
+        val oldSpeed = if (::speed.isInitialized) speed.progress else 8
         val oldInput = if (::numberInput.isInitialized) {
             numberInput.text.toString()
         } else ""
@@ -209,7 +217,6 @@ class MainActivity : Activity() {
     // AÇILIŞ EKRANI
 
     private fun showSplashScreen() {
-
         val splash = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -225,10 +232,7 @@ class MainActivity : Activity() {
             scaleY = 0.75f
         }
 
-        splash.addView(
-            logo,
-            LinearLayout.LayoutParams(dp(150), dp(150))
-        )
+        splash.addView(logo, LinearLayout.LayoutParams(dp(150), dp(150)))
 
         val brand = TextView(this).apply {
             textSize = 30f
@@ -241,18 +245,12 @@ class MainActivity : Activity() {
             alpha = 0f
 
             text = SpannableString("UR52 CODEX").apply {
-                setSpan(
-                    ForegroundColorSpan(Color.rgb(220, 225, 230)),
-                    0, 2, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-                setSpan(
-                    ForegroundColorSpan(orange),
-                    2, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-                setSpan(
-                    ForegroundColorSpan(primaryText),
-                    5, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
+                setSpan(ForegroundColorSpan(Color.rgb(220, 225, 230)),
+                    0, 2, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                setSpan(ForegroundColorSpan(orange),
+                    2, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                setSpan(ForegroundColorSpan(primaryText),
+                    5, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
         }
 
@@ -294,31 +292,17 @@ class MainActivity : Activity() {
 
         setContentView(splash)
 
-        logo.animate()
-            .alpha(1f)
-            .scaleX(1f)
-            .scaleY(1f)
-            .setDuration(650)
-            .start()
+        logo.animate().alpha(1f).scaleX(1f).scaleY(1f)
+            .setDuration(650).start()
 
-        brand.animate()
-            .alpha(1f)
-            .setStartDelay(350)
-            .setDuration(550)
-            .start()
+        brand.animate().alpha(1f)
+            .setStartDelay(350).setDuration(550).start()
 
-        subtitle.animate()
-            .alpha(1f)
-            .setStartDelay(550)
-            .setDuration(550)
-            .start()
+        subtitle.animate().alpha(1f)
+            .setStartDelay(550).setDuration(550).start()
 
-        lightLine.animate()
-            .alpha(1f)
-            .scaleX(1f)
-            .setStartDelay(650)
-            .setDuration(500)
-            .start()
+        lightLine.animate().alpha(1f).scaleX(1f)
+            .setStartDelay(650).setDuration(500).start()
 
         handler.postDelayed({
             if (!isFinishing) {
@@ -353,14 +337,7 @@ class MainActivity : Activity() {
     private fun playTransitionSound() {
         if (!soundEnabled || !soundLoaded || soundId == 0) return
 
-        soundPool?.play(
-            soundId,
-            0.85f,
-            0.85f,
-            1,
-            0,
-            1.0f
-        )
+        soundPool?.play(soundId, 0.85f, 0.85f, 1, 0, 1.0f)
     }
 
     private fun updateSoundButton() {
@@ -389,16 +366,8 @@ class MainActivity : Activity() {
         if (!::themeButton.isInitialized) return
 
         themeButton.text = if (isDarkTheme) "☀" else "☾"
-
-        themeButton.background = rounded(
-            innerColor,
-            12,
-            borderColor
-        )
-
-        themeButton.setTextColor(
-            if (isDarkTheme) orangeLight else orange
-        )
+        themeButton.background = rounded(innerColor, 12, borderColor)
+        themeButton.setTextColor(if (isDarkTheme) orangeLight else orange)
 
         themeButton.contentDescription =
             if (isDarkTheme) "Açık temaya geç" else "Koyu temaya geç"
@@ -435,8 +404,24 @@ class MainActivity : Activity() {
             textSize = size
             setTextColor(color)
             gravity = Gravity.CENTER_VERTICAL
-
             if (bold) setTypeface(null, Typeface.BOLD)
+        }
+    }
+
+    private fun addPressAnimation(view: View) {
+        view.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    v.animate().scaleX(0.96f).scaleY(0.96f)
+                        .alpha(0.82f).setDuration(90).start()
+                }
+                MotionEvent.ACTION_UP,
+                MotionEvent.ACTION_CANCEL -> {
+                    v.animate().scaleX(1f).scaleY(1f)
+                        .alpha(1f).setDuration(130).start()
+                }
+            }
+            false
         }
     }
 
@@ -456,6 +441,7 @@ class MainActivity : Activity() {
             setPadding(dp(5), dp(11), dp(5), dp(11))
             isClickable = true
             isFocusable = true
+            addPressAnimation(this)
         }
     }
 
@@ -469,8 +455,9 @@ class MainActivity : Activity() {
     private fun makeCard(): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = rounded(cardColor, 15, borderColor)
-            setPadding(dp(11), dp(10), dp(11), dp(10))
+            background = rounded(cardColor, 17, borderColor)
+            setPadding(dp(12), dp(11), dp(12), dp(11))
+            elevation = dp(if (isDarkTheme) 1 else 2).toFloat()
         }
     }
 
@@ -483,7 +470,6 @@ class MainActivity : Activity() {
     // ANA ARAYÜZ
 
     private fun buildUi() {
-
         val scrollView = ScrollView(this).apply {
             setFillViewport(true)
             clipToPadding = false
@@ -507,7 +493,7 @@ class MainActivity : Activity() {
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(2), dp(2), dp(2), dp(12))
+            setPadding(dp(2), dp(2), dp(2), dp(13))
         }
 
         val logo = ImageView(this).apply {
@@ -524,22 +510,14 @@ class MainActivity : Activity() {
         }
 
         val brandText = SpannableString("UR52 CODEX").apply {
-            setSpan(
-                ForegroundColorSpan(Color.rgb(220, 225, 230)),
-                0, 2, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-            setSpan(
-                ForegroundColorSpan(orange),
-                2, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-            setSpan(
-                ForegroundColorSpan(primaryText),
-                5, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-            setSpan(
-                StyleSpan(Typeface.BOLD_ITALIC),
-                0, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
+            setSpan(ForegroundColorSpan(Color.rgb(220, 225, 230)),
+                0, 2, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(ForegroundColorSpan(orange),
+                2, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(ForegroundColorSpan(primaryText),
+                5, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(StyleSpan(Typeface.BOLD_ITALIC),
+                0, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
 
         val brandTitle = text("", 23f, primaryText, true).apply {
@@ -561,8 +539,6 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
-        // TEMA DÜĞMESİ
-
         themeButton = TextView(this).apply {
             textSize = 23f
             gravity = Gravity.CENTER
@@ -573,16 +549,12 @@ class MainActivity : Activity() {
             layoutParams = LinearLayout.LayoutParams(dp(40), dp(42)).apply {
                 marginEnd = dp(6)
             }
+            addPressAnimation(this)
         }
 
-        themeButton.setOnClickListener {
-            toggleTheme()
-        }
-
+        themeButton.setOnClickListener { toggleTheme() }
         header.addView(themeButton)
         updateThemeButton()
-
-        // SES DÜĞMESİ
 
         soundButton = TextView(this).apply {
             textSize = 23f
@@ -592,12 +564,12 @@ class MainActivity : Activity() {
             isFocusable = true
             setPadding(0, 0, 0, 0)
             layoutParams = LinearLayout.LayoutParams(dp(42), dp(42))
+            addPressAnimation(this)
         }
 
         soundButton.setOnClickListener {
             soundEnabled = !soundEnabled
             updateSoundButton()
-
             status.text = if (soundEnabled) {
                 "Deep Pulse sesi açıldı."
             } else {
@@ -607,7 +579,6 @@ class MainActivity : Activity() {
 
         header.addView(soundButton)
         updateSoundButton()
-
         page.addView(header)
 
         // MOD SEÇİMİ
@@ -624,12 +595,9 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
-        modeHeader.addView(
-            text("01 / 02", 9f, orangeLight, true)
-        )
-
+        modeHeader.addView(text("01 / 02", 9f, orangeLight, true))
         modeCard.addView(modeHeader)
-        addGap(modeCard, 8)
+        addGap(modeCard, 9)
 
         val tabs = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -654,22 +622,21 @@ class MainActivity : Activity() {
 
         tabs.addView(
             barcodeTab,
-            LinearLayout.LayoutParams(0, dp(42), 1f).apply {
+            LinearLayout.LayoutParams(0, dp(43), 1f).apply {
                 marginEnd = dp(5)
             }
         )
 
         tabs.addView(
             qrTab,
-            LinearLayout.LayoutParams(0, dp(42), 1f).apply {
+            LinearLayout.LayoutParams(0, dp(43), 1f).apply {
                 marginStart = dp(5)
             }
         )
 
         modeCard.addView(tabs)
         page.addView(modeCard)
-
-        addGap(page, 9)
+        addGap(page, 10)
 
         // VERİ GİRİŞİ
 
@@ -680,16 +647,16 @@ class MainActivity : Activity() {
 
         val fileCard = makeCard()
         fileCard.addView(sectionTitle("TOPLU VERİ"))
-        addGap(fileCard, 8)
+        addGap(fileCard, 9)
 
-        val loadButton = makeButton("＋ TXT YÜKLE", innerColor)
-        loadButton.background = rounded(innerColor, 10, orange)
+        val loadButton = makeButton("＋  TXT YÜKLE", innerColor)
+        loadButton.background = rounded(innerColor, 11, orange)
         loadButton.setTextColor(orangeLight)
         loadButton.setOnClickListener { pickTxt() }
 
         fileCard.addView(
             loadButton,
-            LinearLayout.LayoutParams(-1, dp(42))
+            LinearLayout.LayoutParams(-1, dp(43))
         )
 
         inputCards.addView(
@@ -701,7 +668,7 @@ class MainActivity : Activity() {
 
         val manualCard = makeCard()
         manualCard.addView(sectionTitle("TEKLİ KOD"))
-        addGap(manualCard, 8)
+        addGap(manualCard, 9)
 
         val manualRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -723,26 +690,23 @@ class MainActivity : Activity() {
 
             setSingleLine(true)
             setPadding(dp(8), dp(8), dp(8), dp(8))
-            background = rounded(innerColor, 9, borderColor)
+            background = rounded(innerColor, 10, borderColor)
         }
 
         manualRow.addView(
             numberInput,
-            LinearLayout.LayoutParams(0, dp(42), 1f).apply {
+            LinearLayout.LayoutParams(0, dp(43), 1f).apply {
                 marginEnd = dp(5)
             }
         )
 
         val createButton = makeButton("＋", orange)
         createButton.textSize = 18f
-
-        createButton.setOnClickListener {
-            createSingleCode()
-        }
+        createButton.setOnClickListener { createSingleCode() }
 
         manualRow.addView(
             createButton,
-            LinearLayout.LayoutParams(dp(43), dp(42))
+            LinearLayout.LayoutParams(dp(43), dp(43))
         )
 
         manualCard.addView(manualRow)
@@ -755,15 +719,15 @@ class MainActivity : Activity() {
         )
 
         page.addView(inputCards)
-
-        addGap(page, 9)
+        addGap(page, 10)
 
         // BARKOD / QR SONUÇ ALANI
 
         val resultCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = rounded(Color.WHITE, 15)
-            setPadding(dp(10), dp(9), dp(10), dp(8))
+            background = rounded(Color.WHITE, 17)
+            setPadding(dp(11), dp(10), dp(11), dp(9))
+            elevation = dp(3).toFloat()
         }
 
         val resultHeader = LinearLayout(this).apply {
@@ -776,12 +740,16 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
-        counterText = text("000 / 000", 11f, Color.rgb(210, 105, 0), true)
+        counterText = text(
+            "000 / 000",
+            11f,
+            Color.rgb(210, 105, 0),
+            true
+        )
+
         resultHeader.addView(counterText)
-
         resultCard.addView(resultHeader)
-
-        addGap(resultCard, 5)
+        addGap(resultCard, 6)
 
         resultImage = ImageView(this).apply {
             adjustViewBounds = true
@@ -800,7 +768,7 @@ class MainActivity : Activity() {
             setTextColor(Color.DKGRAY)
             gravity = Gravity.CENTER
             setTypeface(null, Typeface.BOLD)
-            setPadding(dp(4), dp(7), dp(4), dp(3))
+            setPadding(dp(4), dp(8), dp(4), dp(4))
         }
 
         resultCard.addView(resultLabel)
@@ -810,7 +778,7 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(-1, -2)
         )
 
-        addGap(page, 9)
+        addGap(page, 10)
 
         // KONTROLLER
 
@@ -826,20 +794,17 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
-        controlHeader.addView(
-            text("PLAYBACK", 9f, orangeLight, true)
-        )
-
+        controlHeader.addView(text("PLAYBACK", 9f, orangeLight, true))
         controlCard.addView(controlHeader)
-        addGap(controlCard, 9)
+        addGap(controlCard, 10)
 
         val navigationRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
 
-        previousButton = makeButton("◀", innerColor)
-        nextButton = makeButton("▶", innerColor)
+        previousButton = makeButton("◀  ÖNCEKİ", innerColor)
+        nextButton = makeButton("SONRAKİ  ▶", innerColor)
 
         previousButton.setOnClickListener {
             if (currentIndex > 0) {
@@ -857,51 +822,48 @@ class MainActivity : Activity() {
 
         navigationRow.addView(
             previousButton,
-            LinearLayout.LayoutParams(0, dp(43), 1f).apply {
+            LinearLayout.LayoutParams(0, dp(44), 1f).apply {
                 marginEnd = dp(5)
             }
         )
 
         navigationRow.addView(
             nextButton,
-            LinearLayout.LayoutParams(0, dp(43), 1f).apply {
+            LinearLayout.LayoutParams(0, dp(44), 1f).apply {
                 marginStart = dp(5)
             }
         )
 
         controlCard.addView(navigationRow)
-
-        addGap(controlCard, 7)
+        addGap(controlCard, 8)
 
         val playbackRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
         }
 
-        startButton = makeButton("▶ BAŞLAT", orange)
-        val stopButton = makeButton("■ DURDUR", innerColor)
+        startButton = makeButton("▶  BAŞLAT", orange)
+        val stopButton = makeButton("■  DURDUR", innerColor)
 
         startButton.setOnClickListener { startPlayback() }
         stopButton.setOnClickListener { stopPlayback() }
 
         playbackRow.addView(
             startButton,
-            LinearLayout.LayoutParams(0, dp(43), 1f).apply {
+            LinearLayout.LayoutParams(0, dp(44), 1f).apply {
                 marginEnd = dp(5)
             }
         )
 
         playbackRow.addView(
             stopButton,
-            LinearLayout.LayoutParams(0, dp(43), 1f).apply {
+            LinearLayout.LayoutParams(0, dp(44), 1f).apply {
                 marginStart = dp(5)
             }
         )
 
         controlCard.addView(playbackRow)
-
         page.addView(controlCard)
-
-        addGap(page, 9)
+        addGap(page, 10)
 
         // HIZ AYARI
 
@@ -917,14 +879,22 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
-        speedText = text("5 / 20", 12f, orangeLight, true)
-        speedHeader.addView(speedText)
+        speedText = text(
+            "${loadSpeedPreference()} / 20",
+            12f,
+            orangeLight,
+            true
+        )
 
+        speedHeader.addView(speedText)
         speedCard.addView(speedHeader)
+        addGap(speedCard, 3)
 
         speed = SeekBar(this).apply {
             max = 19
-            progress = 4
+
+            // Varsayılan hız 9, son seçilen hız kaydedilir.
+            progress = loadSpeedPreference() - 1
 
             progressTintList =
                 android.content.res.ColorStateList.valueOf(orange)
@@ -940,7 +910,13 @@ class MainActivity : Activity() {
                         progress: Int,
                         fromUser: Boolean
                     ) {
-                        speedText.text = "${progress + 1} / 20"
+                        val selectedLevel = progress + 1
+                        speedText.text = "$selectedLevel / 20"
+
+                        if (fromUser) {
+                            saveSpeedPreference(selectedLevel)
+                        }
+
                         if (running) restartTimer()
                     }
 
@@ -953,17 +929,30 @@ class MainActivity : Activity() {
 
         speedCard.addView(speed)
         page.addView(speedCard)
-
-        addGap(page, 8)
+        addGap(page, 9)
 
         // DURUM BİLGİSİ
 
         status = text("Hazır", 11f, orangeLight, true).apply {
-            setPadding(dp(4), dp(3), dp(4), dp(3))
+            setPadding(dp(9), dp(8), dp(9), dp(8))
             gravity = Gravity.CENTER_VERTICAL
+            background = rounded(innerColor, 10, borderColor)
         }
 
         page.addView(status)
+
+        // ALT İMZA
+
+        val footer = TextView(this).apply {
+            text = "UR52 CODEX  •  CODE GENERATION SYSTEM"
+            textSize = 8f
+            letterSpacing = 0.12f
+            gravity = Gravity.CENTER
+            setTextColor(muted)
+            setPadding(0, dp(14), 0, dp(5))
+        }
+
+        page.addView(footer)
 
         setContentView(scrollView)
     }
@@ -1127,11 +1116,20 @@ class MainActivity : Activity() {
         }
 
         currentIndex = currentIndex.coerceIn(0, values.lastIndex)
-
         showIndex(currentIndex)
 
         status.text =
             "${values.size} kayıt hazır • ${if (mode == Mode.QR) "QR KOD" else "CODE128"}"
+    }
+
+    private fun animateResultImage(bitmap: Bitmap) {
+        resultImage.animate().cancel()
+        resultImage.alpha = 0f
+        resultImage.setImageBitmap(bitmap)
+        resultImage.animate()
+            .alpha(1f)
+            .setDuration(170)
+            .start()
     }
 
     private fun showIndex(
@@ -1142,19 +1140,17 @@ class MainActivity : Activity() {
 
         currentIndex = index.coerceIn(0, values.lastIndex)
 
-        if (playSound) {
-            playTransitionSound()
-        }
+        if (playSound) playTransitionSound()
 
         val value = values[currentIndex]
         val selectedMode = mode
         val token = ++generationToken
         val cacheKey = getCacheKey(value)
 
-        counterText.text =
-            "${currentIndex + 1} / ${values.size}"
-
+        counterText.text = "${currentIndex + 1} / ${values.size}"
         resultLabel.text = value
+        resultImage.animate().cancel()
+        resultImage.alpha = 1f
         resultImage.setImageDrawable(null)
 
         updateNavigationButtons()
@@ -1162,7 +1158,7 @@ class MainActivity : Activity() {
         val cachedBitmap = bitmapCache.get(cacheKey)
 
         if (cachedBitmap != null) {
-            resultImage.setImageBitmap(cachedBitmap)
+            animateResultImage(cachedBitmap)
             prefetchNext()
             return
         }
@@ -1182,7 +1178,7 @@ class MainActivity : Activity() {
                         values[currentIndex] == value &&
                         mode == selectedMode
                     ) {
-                        resultImage.setImageBitmap(bitmap)
+                        animateResultImage(bitmap)
 
                         status.text =
                             "${currentIndex + 1} / ${values.size} kayıt gösteriliyor."
@@ -1262,9 +1258,13 @@ class MainActivity : Activity() {
         }
 
         running = true
-        startButton.text = "▶ AKIŞ AKTİF"
-        status.text = "Otomatik sıralama başladı."
+        startButton.text = "●  AKIŞ AKTİF"
+        startButton.background = rounded(
+            Color.rgb(190, 91, 0),
+            12
+        )
 
+        status.text = "Otomatik sıralama başladı."
         restartTimer()
     }
 
@@ -1281,7 +1281,8 @@ class MainActivity : Activity() {
         handler.removeCallbacks(autoRunnable)
 
         if (::startButton.isInitialized) {
-            startButton.text = "▶ BAŞLAT"
+            startButton.text = "▶  BAŞLAT"
+            startButton.background = rounded(orange, 12)
         }
     }
 
