@@ -1,10 +1,13 @@
+
 package com.barkodqrpro
 
 import android.app.Activity
+import android.app.Dialog
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.media.AudioAttributes
 import android.media.SoundPool
@@ -52,8 +55,10 @@ class MainActivity : Activity() {
     private lateinit var nextButton: TextView
     private lateinit var soundButton: TextView
     private lateinit var themeButton: TextView
+    private lateinit var settingsButton: TextView
 
     // PREMIUM AKIŞ ANİMASYONU
+
     private lateinit var flowTrack: FrameLayout
     private lateinit var flowSegment: View
 
@@ -562,6 +567,29 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
+        // KONTROL MERKEZİ BUTONU
+
+        settingsButton = TextView(this).apply {
+            text = "⚙"
+            textSize = 23f
+            gravity = Gravity.CENTER
+            setTextColor(orangeLight)
+            background = rounded(innerColor, 12, borderColor)
+            isClickable = true
+            isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(dp(40), dp(42)).apply {
+                marginEnd = dp(6)
+            }
+            addPressAnimation(this)
+            contentDescription = "Kontrol merkezi"
+        }
+
+        settingsButton.setOnClickListener {
+            showControlCenter()
+        }
+
+        header.addView(settingsButton)
+
         themeButton = TextView(this).apply {
             textSize = 23f
             gravity = Gravity.CENTER
@@ -1001,6 +1029,354 @@ class MainActivity : Activity() {
         page.addView(footer)
 
         setContentView(scrollView)
+    }
+
+    // KONTROL MERKEZİ
+
+    private fun showControlCenter() {
+
+        val dialog = Dialog(this)
+
+        val scroll = ScrollView(this).apply {
+            setBackgroundColor(backgroundColor)
+            isFillViewport = true
+            isVerticalScrollBarEnabled = false
+        }
+
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(18), dp(18), dp(24))
+            setBackgroundColor(backgroundColor)
+        }
+
+        scroll.addView(
+            page,
+            android.widget.FrameLayout.LayoutParams(-1, -1)
+        )
+
+        // ÜST BAŞLIK
+
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val titleArea = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        val title = TextView(this).apply {
+            text = SpannableString("UR52 CODEX").apply {
+                setSpan(
+                    ForegroundColorSpan(Color.rgb(220, 225, 230)),
+                    0, 2, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                setSpan(
+                    ForegroundColorSpan(orange),
+                    2, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                setSpan(
+                    ForegroundColorSpan(primaryText),
+                    5, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+            textSize = 25f
+            typeface = Typeface.create(
+                "sans-serif-condensed",
+                Typeface.BOLD_ITALIC
+            )
+        }
+
+        titleArea.addView(title)
+
+        titleArea.addView(
+            text("CONTROL CENTER", 10f, orangeLight, true)
+        )
+
+        header.addView(
+            titleArea,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        val closeButton = makeButton("✕", innerColor)
+        closeButton.textSize = 19f
+
+        header.addView(
+            closeButton,
+            LinearLayout.LayoutParams(dp(44), dp(44))
+        )
+
+        closeButton.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        page.addView(header)
+
+        addGap(page, 22)
+
+        page.addView(
+            text("SİSTEM YÖNETİMİ", 17f, primaryText, true)
+        )
+
+        page.addView(
+            text(
+                "UR52 CODEX çalışma ortamını yapılandır.",
+                11f,
+                muted
+            )
+        )
+
+        addGap(page, 18)
+
+        // 01 GÖRÜNÜM
+
+        val appearanceCard = makeCard()
+
+        appearanceCard.addView(
+            text("01  /  GÖRÜNÜM", 11f, orangeLight, true)
+        )
+
+        addGap(appearanceCard, 12)
+
+        val themeRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val themeInfo = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        themeInfo.addView(
+            text("Tema tercihi", 14f, primaryText, true)
+        )
+
+        themeInfo.addView(
+            text("Koyu veya açık görünüm", 10f, muted)
+        )
+
+        themeRow.addView(
+            themeInfo,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        val themeSwitch = Switch(this).apply {
+            isChecked = isDarkTheme
+            text = "Koyu"
+            setTextColor(primaryText)
+            buttonTintList =
+                android.content.res.ColorStateList.valueOf(orange)
+        }
+
+        themeRow.addView(themeSwitch)
+        appearanceCard.addView(themeRow)
+
+        themeSwitch.setOnCheckedChangeListener { _, checked ->
+            if (checked != isDarkTheme) {
+                dialog.dismiss()
+                toggleTheme()
+            }
+        }
+
+        page.addView(appearanceCard)
+
+        addGap(page, 12)
+
+        // 02 SES MOTORU
+
+        val soundCard = makeCard()
+
+        soundCard.addView(
+            text("02  /  SES MOTORU", 11f, orangeLight, true)
+        )
+
+        addGap(soundCard, 12)
+
+        val soundRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val soundInfo = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        soundInfo.addView(
+            text("Deep Pulse", 14f, primaryText, true)
+        )
+
+        soundInfo.addView(
+            text("Elektronik geçiş ses efekti", 10f, muted)
+        )
+
+        soundRow.addView(
+            soundInfo,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        val soundSwitch = Switch(this).apply {
+            isChecked = soundEnabled
+            text = "Ses"
+            setTextColor(primaryText)
+            buttonTintList =
+                android.content.res.ColorStateList.valueOf(orange)
+        }
+
+        soundRow.addView(soundSwitch)
+        soundCard.addView(soundRow)
+
+        soundSwitch.setOnCheckedChangeListener { _, checked ->
+            soundEnabled = checked
+            updateSoundButton()
+        }
+
+        page.addView(soundCard)
+
+        addGap(page, 12)
+
+        // 03 PERFORMANS
+
+        val performanceCard = makeCard()
+
+        performanceCard.addView(
+            text("03  /  PERFORMANS", 11f, orangeLight, true)
+        )
+
+        addGap(performanceCard, 12)
+
+        val speedHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        speedHeader.addView(
+            text("Otomatik geçiş hızı", 14f, primaryText, true),
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        val performanceSpeedText = text(
+            "${speed.progress + 1} / 20",
+            13f,
+            orangeLight,
+            true
+        )
+
+        speedHeader.addView(performanceSpeedText)
+        performanceCard.addView(speedHeader)
+
+        addGap(performanceCard, 5)
+
+        val performanceSeekBar = SeekBar(this).apply {
+            max = 19
+            progress = speed.progress
+
+            progressTintList =
+                android.content.res.ColorStateList.valueOf(orange)
+
+            thumbTintList =
+                android.content.res.ColorStateList.valueOf(orangeLight)
+        }
+
+        performanceSeekBar.setOnSeekBarChangeListener(
+            object : SeekBar.OnSeekBarChangeListener {
+
+                override fun onProgressChanged(
+                    seekBar: SeekBar?,
+                    progress: Int,
+                    fromUser: Boolean
+                ) {
+                    val level = progress + 1
+                    performanceSpeedText.text = "$level / 20"
+
+                    if (fromUser) {
+                        speed.progress = progress
+                        saveSpeedPreference(level)
+                    }
+                }
+
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            }
+        )
+
+        performanceCard.addView(performanceSeekBar)
+
+        addGap(performanceCard, 5)
+
+        performanceCard.addView(
+            text(
+                "Varsayılan hız: 9 / 20",
+                10f,
+                muted
+            )
+        )
+
+        page.addView(performanceCard)
+
+        addGap(page, 12)
+
+        // 04 SİSTEM BİLGİSİ
+
+        val infoCard = makeCard()
+
+        infoCard.addView(
+            text("04  /  SİSTEM BİLGİSİ", 11f, orangeLight, true)
+        )
+
+        addGap(infoCard, 14)
+
+        fun addInfoRow(label: String, value: String) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+
+            row.addView(
+                text(label, 11f, muted),
+                LinearLayout.LayoutParams(0, -2, 1f)
+            )
+
+            row.addView(
+                text(value, 11f, primaryText, true)
+            )
+
+            infoCard.addView(row)
+            addGap(infoCard, 10)
+        }
+
+        addInfoRow("Uygulama", "UR52 CODEX")
+        addInfoRow("Motor", "CODE GENERATION")
+        addInfoRow("Barkod formatı", "CODE128")
+        addInfoRow("Kare kod", "QR")
+        addInfoRow("Arayüz", "PREMIUM EDITION")
+        addInfoRow("Durum", "SYSTEM ONLINE")
+
+        page.addView(infoCard)
+
+        addGap(page, 22)
+
+        val footer = TextView(this).apply {
+            text = "DESIGNED FOR SPEED.\nBUILT FOR PRECISION."
+            textSize = 10f
+            gravity = Gravity.CENTER
+            letterSpacing = 0.12f
+            setTextColor(muted)
+            setPadding(0, dp(12), 0, dp(12))
+        }
+
+        page.addView(footer)
+
+        dialog.setContentView(scroll)
+
+        dialog.window?.apply {
+            setBackgroundDrawable(ColorDrawable(backgroundColor))
+            setLayout(-1, -1)
+        }
+
+        dialog.show()
+
+        dialog.window?.setLayout(-1, -1)
     }
 
     // TEKLİ KOD OLUŞTURMA
