@@ -1,4 +1,3 @@
-
 package com.barkodqrpro
 
 import android.app.Activity
@@ -21,6 +20,8 @@ import android.text.style.StyleSpan
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.animation.ValueAnimator
 import android.widget.*
 import android.util.LruCache
 import com.google.zxing.BarcodeFormat
@@ -51,6 +52,13 @@ class MainActivity : Activity() {
     private lateinit var nextButton: TextView
     private lateinit var soundButton: TextView
     private lateinit var themeButton: TextView
+
+    // PREMIUM AKIŞ ANİMASYONU
+    private lateinit var flowTrack: FrameLayout
+    private lateinit var flowSegment: View
+
+    private var flowAnimator: ValueAnimator? = null
+    private var pulseAnimator: ValueAnimator? = null
 
     private var soundPool: SoundPool? = null
     private var soundId = 0
@@ -245,12 +253,18 @@ class MainActivity : Activity() {
             alpha = 0f
 
             text = SpannableString("UR52 CODEX").apply {
-                setSpan(ForegroundColorSpan(Color.rgb(220, 225, 230)),
-                    0, 2, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                setSpan(ForegroundColorSpan(orange),
-                    2, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                setSpan(ForegroundColorSpan(primaryText),
-                    5, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                setSpan(
+                    ForegroundColorSpan(Color.rgb(220, 225, 230)),
+                    0, 2, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                setSpan(
+                    ForegroundColorSpan(orange),
+                    2, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                setSpan(
+                    ForegroundColorSpan(primaryText),
+                    5, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
             }
         }
 
@@ -415,6 +429,7 @@ class MainActivity : Activity() {
                     v.animate().scaleX(0.96f).scaleY(0.96f)
                         .alpha(0.82f).setDuration(90).start()
                 }
+
                 MotionEvent.ACTION_UP,
                 MotionEvent.ACTION_CANCEL -> {
                     v.animate().scaleX(1f).scaleY(1f)
@@ -510,14 +525,22 @@ class MainActivity : Activity() {
         }
 
         val brandText = SpannableString("UR52 CODEX").apply {
-            setSpan(ForegroundColorSpan(Color.rgb(220, 225, 230)),
-                0, 2, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            setSpan(ForegroundColorSpan(orange),
-                2, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            setSpan(ForegroundColorSpan(primaryText),
-                5, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            setSpan(StyleSpan(Typeface.BOLD_ITALIC),
-                0, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(
+                ForegroundColorSpan(Color.rgb(220, 225, 230)),
+                0, 2, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            setSpan(
+                ForegroundColorSpan(orange),
+                2, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            setSpan(
+                ForegroundColorSpan(primaryText),
+                5, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            setSpan(
+                StyleSpan(Typeface.BOLD_ITALIC),
+                0, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
         }
 
         val brandTitle = text("", 23f, primaryText, true).apply {
@@ -762,6 +785,31 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(-1, dp(190))
         )
 
+        // HAREKETLİ TURUNCU AKIŞ ÇİZGİSİ
+
+        flowTrack = FrameLayout(this).apply {
+            background = rounded(innerColor, 3)
+            clipToOutline = true
+            alpha = 0f
+        }
+
+        flowSegment = View(this).apply {
+            background = rounded(orange, 3)
+            visibility = View.INVISIBLE
+        }
+
+        flowTrack.addView(
+            flowSegment,
+            FrameLayout.LayoutParams(dp(56), -1)
+        )
+
+        resultCard.addView(
+            flowTrack,
+            LinearLayout.LayoutParams(-1, dp(3)).apply {
+                topMargin = dp(7)
+            }
+        )
+
         resultLabel = TextView(this).apply {
             text = "Henüz kod oluşturulmadı"
             textSize = 13f
@@ -892,8 +940,6 @@ class MainActivity : Activity() {
 
         speed = SeekBar(this).apply {
             max = 19
-
-            // Varsayılan hız 9, son seçilen hız kaydedilir.
             progress = loadSpeedPreference() - 1
 
             progressTintList =
@@ -1122,13 +1168,23 @@ class MainActivity : Activity() {
             "${values.size} kayıt hazır • ${if (mode == Mode.QR) "QR KOD" else "CODE128"}"
     }
 
+    // YUMUŞAK GÖRÜNTÜ GEÇİŞİ
+
     private fun animateResultImage(bitmap: Bitmap) {
         resultImage.animate().cancel()
+
         resultImage.alpha = 0f
+        resultImage.scaleX = 0.985f
+        resultImage.scaleY = 0.985f
+
         resultImage.setImageBitmap(bitmap)
+
         resultImage.animate()
             .alpha(1f)
-            .setDuration(170)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(220)
+            .setInterpolator(AccelerateDecelerateInterpolator())
             .start()
     }
 
@@ -1245,6 +1301,95 @@ class MainActivity : Activity() {
         }
     }
 
+    // PREMIUM AKIŞ ANİMASYONLARI
+
+    private fun startFlowAnimation() {
+        if (!::flowTrack.isInitialized) return
+
+        flowAnimator?.cancel()
+
+        flowTrack.animate().cancel()
+        flowTrack.animate()
+            .alpha(1f)
+            .setDuration(180)
+            .start()
+
+        flowSegment.visibility = View.VISIBLE
+
+        flowTrack.post {
+            if (!running || flowTrack.width <= flowSegment.width) {
+                return@post
+            }
+
+            val travelDistance =
+                (flowTrack.width - flowSegment.width).toFloat()
+
+            flowAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 1050
+                repeatCount = ValueAnimator.INFINITE
+                repeatMode = ValueAnimator.REVERSE
+                interpolator = AccelerateDecelerateInterpolator()
+
+                addUpdateListener { animator ->
+                    flowSegment.translationX =
+                        travelDistance * (animator.animatedValue as Float)
+                }
+
+                start()
+            }
+        }
+    }
+
+    private fun stopFlowAnimation() {
+        flowAnimator?.cancel()
+        flowAnimator = null
+
+        if (!::flowTrack.isInitialized) return
+
+        flowTrack.animate().cancel()
+        flowTrack.animate()
+            .alpha(0f)
+            .setDuration(160)
+            .start()
+
+        flowSegment.translationX = 0f
+        flowSegment.visibility = View.INVISIBLE
+    }
+
+    private fun startPlaybackPulse() {
+        if (!::startButton.isInitialized) return
+
+        pulseAnimator?.cancel()
+
+        pulseAnimator = ValueAnimator.ofFloat(1f, 1.025f).apply {
+            duration = 750
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.REVERSE
+            interpolator = AccelerateDecelerateInterpolator()
+
+            addUpdateListener { animator ->
+                val scale = animator.animatedValue as Float
+
+                startButton.scaleX = scale
+                startButton.scaleY = scale
+            }
+
+            start()
+        }
+    }
+
+    private fun stopPlaybackPulse() {
+        pulseAnimator?.cancel()
+        pulseAnimator = null
+
+        if (::startButton.isInitialized) {
+            startButton.animate().cancel()
+            startButton.scaleX = 1f
+            startButton.scaleY = 1f
+            startButton.alpha = 1f
+        }
+    }
+
     // OTOMATİK OYNATMA
 
     private fun startPlayback() {
@@ -1258,13 +1403,18 @@ class MainActivity : Activity() {
         }
 
         running = true
+
         startButton.text = "●  AKIŞ AKTİF"
         startButton.background = rounded(
             Color.rgb(190, 91, 0),
             12
         )
 
+        startFlowAnimation()
+        startPlaybackPulse()
+
         status.text = "Otomatik sıralama başladı."
+
         restartTimer()
     }
 
@@ -1279,6 +1429,9 @@ class MainActivity : Activity() {
     private fun stopPlayback() {
         running = false
         handler.removeCallbacks(autoRunnable)
+
+        stopFlowAnimation()
+        stopPlaybackPulse()
 
         if (::startButton.isInitialized) {
             startButton.text = "▶  BAŞLAT"
