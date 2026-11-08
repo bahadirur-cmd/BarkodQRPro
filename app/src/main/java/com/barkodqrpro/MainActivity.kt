@@ -1,4 +1,3 @@
-
 package com.barkodqrpro
 
 import android.app.Activity
@@ -134,21 +133,19 @@ class MainActivity : Activity() {
         }
 
         // ÜST LOGO VE BAŞLIK
-
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(4), dp(8), dp(4), dp(16))
         }
 
-        val logo = TextView(this).apply {
-            text = "▥"
-            textSize = 37f
-            setTextColor(orange)
-            gravity = Gravity.CENTER
-            typeface = Typeface.DEFAULT_BOLD
+        // Yeni UR yarış tarzı logo, uygulama içinde de gösteriliyor.
+        val logo = ImageView(this).apply {
+            setImageResource(R.drawable.barkodqr_logo)
+            scaleType = ImageView.ScaleType.FIT_CENTER
             background = rounded(cardColor, 16)
-            layoutParams = LinearLayout.LayoutParams(dp(64), dp(64))
+            setPadding(dp(3), dp(3), dp(3), dp(3))
+            layoutParams = LinearLayout.LayoutParams(dp(76), dp(76))
         }
 
         header.addView(logo)
@@ -159,7 +156,7 @@ class MainActivity : Activity() {
         }
 
         val title = text("BARKODQR", 23f, white, true)
-        val subtitle = text("PRO  •  OFFLINE GENERATOR", 10f, orangeLight, true)
+        val subtitle = text("UR  •  PRO OFFLINE GENERATOR", 10f, orangeLight, true)
 
         titleArea.addView(title)
         titleArea.addView(subtitle)
@@ -172,7 +169,6 @@ class MainActivity : Activity() {
         page.addView(header)
 
         // MOD SEÇİM KARTI
-
         val modeCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = rounded(cardColor, 18)
@@ -221,7 +217,6 @@ class MainActivity : Activity() {
         addGap(page, 12)
 
         // DOSYA YÜKLEME ALANI
-
         val fileCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = rounded(cardColor, 18)
@@ -261,7 +256,6 @@ class MainActivity : Activity() {
         addGap(page, 12)
 
         // HIZ AYARI
-
         val speedCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = rounded(cardColor, 18)
@@ -317,7 +311,6 @@ class MainActivity : Activity() {
         addGap(page, 12)
 
         // ÇALIŞTIRMA KONTROLLERİ
-
         val controlCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = rounded(cardColor, 18)
@@ -346,8 +339,6 @@ class MainActivity : Activity() {
             }
         )
 
-        // DÜZELTİLDİ: marginHorizontal yerine iki ayrı kenar boşluğu
-
         controls.addView(
             stopButton,
             LinearLayout.LayoutParams(0, -2, 1f).apply {
@@ -369,13 +360,11 @@ class MainActivity : Activity() {
         addGap(page, 10)
 
         // DURUM BİLGİSİ
-
         status = text("Hazır", 12f, orangeLight, true)
         status.setPadding(dp(4), dp(4), dp(4), dp(8))
         page.addView(status)
 
         // KODLARIN GÖRÜNTÜLENDİĞİ ALAN
-
         scroller = ScrollView(this).apply {
             background = rounded(Color.WHITE, 18)
             isFillViewport = false
@@ -579,8 +568,6 @@ class MainActivity : Activity() {
             renderVisibleItems()
         }
     }
-
-    // Yalnızca görünür kodların bitmap'leri oluşturulur.
 
     private fun renderVisibleItems() {
 
