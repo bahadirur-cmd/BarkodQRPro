@@ -49,11 +49,14 @@ class MainActivity : Activity() {
     private lateinit var previousButton: TextView
     private lateinit var nextButton: TextView
     private lateinit var soundButton: TextView
+    private lateinit var themeButton: TextView
 
     private var soundPool: SoundPool? = null
     private var soundId = 0
     private var soundLoaded = false
     private var soundEnabled = true
+
+    private var isDarkTheme = true
 
     private var currentIndex = 0
     private var running = false
@@ -72,14 +75,114 @@ class MainActivity : Activity() {
 
     private val PICK_TXT = 41
 
-    private val backgroundColor = Color.rgb(15, 19, 24)
-    private val cardColor = Color.rgb(29, 36, 44)
-    private val innerColor = Color.rgb(20, 26, 33)
+    // TEMA RENKLERİ
+
+    private var backgroundColor = Color.rgb(15, 19, 24)
+    private var cardColor = Color.rgb(29, 36, 44)
+    private var innerColor = Color.rgb(20, 26, 33)
     private val orange = Color.rgb(255, 133, 0)
     private val orangeLight = Color.rgb(255, 165, 65)
-    private val white = Color.WHITE
-    private val muted = Color.rgb(150, 163, 174)
-    private val borderColor = Color.rgb(54, 65, 76)
+    private var white = Color.WHITE
+    private var muted = Color.rgb(150, 163, 174)
+    private var borderColor = Color.rgb(54, 65, 76)
+    private var primaryText = Color.WHITE
+    private var secondaryText = Color.rgb(220, 225, 230)
+    private var statusBarColor = Color.rgb(15, 19, 24)
+
+    private fun applyThemeColors() {
+        if (isDarkTheme) {
+            backgroundColor = Color.rgb(15, 19, 24)
+            cardColor = Color.rgb(29, 36, 44)
+            innerColor = Color.rgb(20, 26, 33)
+            white = Color.WHITE
+            muted = Color.rgb(150, 163, 174)
+            borderColor = Color.rgb(54, 65, 76)
+            primaryText = Color.WHITE
+            secondaryText = Color.rgb(220, 225, 230)
+            statusBarColor = Color.rgb(15, 19, 24)
+        } else {
+            backgroundColor = Color.rgb(242, 245, 248)
+            cardColor = Color.rgb(255, 255, 255)
+            innerColor = Color.rgb(235, 239, 243)
+            white = Color.rgb(31, 39, 48)
+            muted = Color.rgb(105, 117, 128)
+            borderColor = Color.rgb(215, 222, 229)
+            primaryText = Color.rgb(28, 36, 45)
+            secondaryText = Color.rgb(65, 76, 87)
+            statusBarColor = Color.rgb(242, 245, 248)
+        }
+
+        window.statusBarColor = statusBarColor
+        window.navigationBarColor = backgroundColor
+
+        if (android.os.Build.VERSION.SDK_INT >= 23) {
+            window.decorView.systemUiVisibility =
+                if (isDarkTheme) 0
+                else View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        }
+
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            window.decorView.systemUiVisibility =
+                if (isDarkTheme) 0
+                else View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or
+                    View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        }
+    }
+
+    private fun loadThemePreference() {
+        val preferences = getSharedPreferences(
+            "ur52_preferences",
+            MODE_PRIVATE
+        )
+
+        isDarkTheme = preferences.getBoolean("dark_theme", true)
+        applyThemeColors()
+    }
+
+    private fun saveThemePreference() {
+        getSharedPreferences(
+            "ur52_preferences",
+            MODE_PRIVATE
+        ).edit()
+            .putBoolean("dark_theme", isDarkTheme)
+            .apply()
+    }
+
+    private fun toggleTheme() {
+        val oldSpeed = if (::speed.isInitialized) speed.progress else 4
+        val oldInput = if (::numberInput.isInitialized) {
+            numberInput.text.toString()
+        } else ""
+
+        val wasRunning = running
+
+        stopPlayback()
+
+        isDarkTheme = !isDarkTheme
+        saveThemePreference()
+        applyThemeColors()
+
+        buildUi()
+
+        speed.progress = oldSpeed
+        numberInput.setText(oldInput)
+
+        updateTabs()
+        updateSoundButton()
+        updateThemeButton()
+
+        refresh()
+
+        if (wasRunning && values.isNotEmpty()) {
+            startPlayback()
+        } else {
+            status.text = if (isDarkTheme) {
+                "Koyu tema etkin."
+            } else {
+                "Açık tema etkin."
+            }
+        }
+    }
 
     private val autoRunnable = object : Runnable {
         override fun run() {
@@ -98,9 +201,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        window.statusBarColor = backgroundColor
-        window.navigationBarColor = backgroundColor
-
+        loadThemePreference()
         initializeSound()
         showSplashScreen()
     }
@@ -149,7 +250,7 @@ class MainActivity : Activity() {
                     2, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
                 setSpan(
-                    ForegroundColorSpan(white),
+                    ForegroundColorSpan(primaryText),
                     5, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
             }
@@ -268,7 +369,10 @@ class MainActivity : Activity() {
         soundButton.text = if (soundEnabled) "♫" else "♪"
 
         soundButton.background = rounded(
-            if (soundEnabled) Color.rgb(65, 43, 24) else innerColor,
+            if (soundEnabled) {
+                if (isDarkTheme) Color.rgb(65, 43, 24)
+                else Color.rgb(255, 239, 220)
+            } else innerColor,
             12,
             if (soundEnabled) orange else borderColor
         )
@@ -279,6 +383,25 @@ class MainActivity : Activity() {
 
         soundButton.contentDescription =
             if (soundEnabled) "Sesi kapat" else "Sesi aç"
+    }
+
+    private fun updateThemeButton() {
+        if (!::themeButton.isInitialized) return
+
+        themeButton.text = if (isDarkTheme) "☀" else "☾"
+
+        themeButton.background = rounded(
+            innerColor,
+            12,
+            borderColor
+        )
+
+        themeButton.setTextColor(
+            if (isDarkTheme) orangeLight else orange
+        )
+
+        themeButton.contentDescription =
+            if (isDarkTheme) "Açık temaya geç" else "Koyu temaya geç"
     }
 
     // TASARIM ARAÇLARI
@@ -357,7 +480,7 @@ class MainActivity : Activity() {
         }
     }
 
-    // YENİ ANA ARAYÜZ
+    // ANA ARAYÜZ
 
     private fun buildUi() {
 
@@ -410,7 +533,7 @@ class MainActivity : Activity() {
                 2, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
             setSpan(
-                ForegroundColorSpan(white),
+                ForegroundColorSpan(primaryText),
                 5, 10, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
             )
             setSpan(
@@ -419,7 +542,7 @@ class MainActivity : Activity() {
             )
         }
 
-        val brandTitle = text("", 23f, white, true).apply {
+        val brandTitle = text("", 23f, primaryText, true).apply {
             text = brandText
             typeface = Typeface.create(
                 "sans-serif-condensed",
@@ -438,7 +561,28 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
-        // KÜÇÜK SES SİMGESİ
+        // TEMA DÜĞMESİ
+
+        themeButton = TextView(this).apply {
+            textSize = 23f
+            gravity = Gravity.CENTER
+            setTypeface(null, Typeface.BOLD)
+            isClickable = true
+            isFocusable = true
+            setPadding(0, 0, 0, 0)
+            layoutParams = LinearLayout.LayoutParams(dp(40), dp(42)).apply {
+                marginEnd = dp(6)
+            }
+        }
+
+        themeButton.setOnClickListener {
+            toggleTheme()
+        }
+
+        header.addView(themeButton)
+        updateThemeButton()
+
+        // SES DÜĞMESİ
 
         soundButton = TextView(this).apply {
             textSize = 23f
@@ -567,7 +711,7 @@ class MainActivity : Activity() {
         numberInput = EditText(this).apply {
             hint = "Numara"
             textSize = 12f
-            setTextColor(white)
+            setTextColor(primaryText)
             setHintTextColor(muted)
             inputType = InputType.TYPE_CLASS_NUMBER
 
@@ -857,13 +1001,13 @@ class MainActivity : Activity() {
     private fun updateTabs() {
         if (mode == Mode.BARCODE) {
             barcodeTab.background = rounded(orange, 12)
-            barcodeTab.setTextColor(white)
+            barcodeTab.setTextColor(Color.WHITE)
 
             qrTab.background = rounded(innerColor, 12)
             qrTab.setTextColor(muted)
         } else {
             qrTab.background = rounded(orange, 12)
-            qrTab.setTextColor(white)
+            qrTab.setTextColor(Color.WHITE)
 
             barcodeTab.background = rounded(innerColor, 12)
             barcodeTab.setTextColor(muted)
@@ -1094,9 +1238,6 @@ class MainActivity : Activity() {
     }
 
     // HIZ AYARI
-    // 1. kademe: 1700 ms
-    // 10. kademe: 350 ms
-    // 20. kademe: 80 ms
 
     private fun getInterval(): Long {
         val level = speed.progress + 1
