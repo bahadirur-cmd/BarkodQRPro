@@ -1,3 +1,4 @@
+
 package com.barkodqrpro
 
 import android.app.Activity
@@ -5,13 +6,13 @@ import android.os.Bundle
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.provider.OpenableColumns
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.content.ContentValues
 import android.provider.MediaStore
 import android.view.Gravity
 import android.view.View
 import android.widget.*
-import android.text.InputType
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.EncodeHintType
@@ -20,105 +21,410 @@ import java.io.InputStreamReader
 import java.util.Locale
 
 class MainActivity : Activity() {
+
     private enum class Mode { BARCODE, QR }
+
     private var mode = Mode.BARCODE
     private val values = mutableListOf<String>()
     private val imageViews = mutableListOf<ImageView>()
+
     private var rowHeight = 190
     private lateinit var container: LinearLayout
     private lateinit var scroller: ScrollView
     private lateinit var status: TextView
     private lateinit var speed: SeekBar
     private lateinit var speedText: TextView
+    private lateinit var barcodeTab: TextView
+    private lateinit var qrTab: TextView
+    private lateinit var startButton: TextView
+
     private var running = false
     private var scrollThread: Thread? = null
+
     private val PICK_TXT = 41
+
+    // PETROL FÜMESİ + TURUNCU RENK PALETİ
+    private val backgroundColor = Color.rgb(38, 50, 56)
+    private val cardColor = Color.rgb(55, 71, 79)
+    private val orange = Color.rgb(255, 133, 0)
+    private val orangeLight = Color.rgb(255, 165, 65)
+    private val white = Color.WHITE
+    private val muted = Color.rgb(190, 202, 207)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        window.statusBarColor = backgroundColor
+        window.navigationBarColor = backgroundColor
+
         buildUi()
         addSamples()
     }
 
+    private fun dp(value: Int): Int {
+        return (value * resources.displayMetrics.density).toInt()
+    }
+
+    private fun rounded(
+        color: Int,
+        radius: Int = 16,
+        strokeColor: Int = Color.TRANSPARENT
+    ): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = dp(radius).toFloat()
+            if (strokeColor != Color.TRANSPARENT) {
+                setStroke(dp(1), strokeColor)
+            }
+        }
+    }
+
+    private fun text(
+        value: String,
+        size: Float,
+        color: Int,
+        bold: Boolean = false
+    ): TextView {
+        return TextView(this).apply {
+            text = value
+            textSize = size
+            setTextColor(color)
+            gravity = Gravity.CENTER_VERTICAL
+            if (bold) setTypeface(null, Typeface.BOLD)
+        }
+    }
+
+    private fun makeButton(
+        label: String,
+        color: Int,
+        textColor: Int = white,
+        radius: Int = 14
+    ): TextView {
+        return TextView(this).apply {
+            text = label
+            textSize = 13f
+            setTextColor(textColor)
+            gravity = Gravity.CENTER
+            setTypeface(null, Typeface.BOLD)
+            background = rounded(color, radius)
+            setPadding(dp(8), dp(14), dp(8), dp(14))
+            isClickable = true
+            isFocusable = true
+        }
+    }
+
+    private fun addGap(parent: LinearLayout, height: Int) {
+        parent.addView(
+            View(this),
+            LinearLayout.LayoutParams(1, dp(height))
+        )
+    }
+
     private fun buildUi() {
+
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(16, 14, 16, 10)
-            setBackgroundColor(Color.rgb(245, 247, 250))
+            setPadding(dp(16), dp(12), dp(16), dp(10))
+            setBackgroundColor(backgroundColor)
         }
-        val title = TextView(this).apply {
-            text = "BarkodQR Pro"
-            textSize = 25f
-            setTextColor(Color.rgb(20, 35, 55))
+
+        // ÜST LOGO VE BAŞLIK
+
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(4), dp(8), dp(4), dp(16))
+        }
+
+        val logo = TextView(this).apply {
+            text = "▥"
+            textSize = 37f
+            setTextColor(orange)
             gravity = Gravity.CENTER
-            setPadding(0, 8, 0, 12)
-            setTypeface(null, android.graphics.Typeface.BOLD)
+            typeface = Typeface.DEFAULT_BOLD
+            background = rounded(cardColor, 16)
+            layoutParams = LinearLayout.LayoutParams(dp(64), dp(64))
         }
-        page.addView(title)
 
-        val tabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val barcodeTab = Button(this).apply { text = "BARKOD"; setOnClickListener { mode = Mode.BARCODE; refresh() } }
-        val qrTab = Button(this).apply { text = "QR KOD"; setOnClickListener { mode = Mode.QR; refresh() } }
-        tabs.addView(barcodeTab, LinearLayout.LayoutParams(0, -2, 1f))
-        tabs.addView(qrTab, LinearLayout.LayoutParams(0, -2, 1f))
-        page.addView(tabs)
+        header.addView(logo)
 
-        val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val load = Button(this).apply { text = "TXT YÜKLE"; setOnClickListener { pickTxt() } }
-        val sample = Button(this).apply { text = "ÖRNEK"; setOnClickListener { addSamples() } }
-        actions.addView(load, LinearLayout.LayoutParams(0, -2, 1f))
-        actions.addView(sample, LinearLayout.LayoutParams(0, -2, 1f))
-        page.addView(actions)
+        val titleArea = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), 0, 0, 0)
+        }
 
-        val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val start = Button(this).apply { text = "BAŞLAT"; setOnClickListener { startScroll() } }
-        val stop = Button(this).apply { text = "DURDUR"; setOnClickListener { stopScroll() } }
-        val save = Button(this).apply { text = "PNG KAYDET"; setOnClickListener { saveAll() } }
-        controls.addView(start, LinearLayout.LayoutParams(0, -2, 1f))
-        controls.addView(stop, LinearLayout.LayoutParams(0, -2, 1f))
-        controls.addView(save, LinearLayout.LayoutParams(0, -2, 1f))
-        page.addView(controls)
+        val title = text("BARKODQR", 23f, white, true)
+        val subtitle = text("PRO  •  OFFLINE GENERATOR", 10f, orangeLight, true)
 
-        speedText = TextView(this).apply { text = "Akış hızı: 5"; textSize = 14f; setTextColor(Color.DKGRAY) }
-        page.addView(speedText)
+        titleArea.addView(title)
+        titleArea.addView(subtitle)
+
+        header.addView(
+            titleArea,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        page.addView(header)
+
+        // MOD SEÇİM KARTI
+
+        val modeCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(cardColor, 18)
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+        }
+
+        modeCard.addView(text("OLUŞTURMA MODU", 11f, muted, true))
+        addGap(modeCard, 8)
+
+        val tabs = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        barcodeTab = makeButton("▥   BARKOD", orange)
+        qrTab = makeButton("▦   QR KOD", backgroundColor, white)
+
+        barcodeTab.setOnClickListener {
+            mode = Mode.BARCODE
+            updateTabs()
+            refresh()
+        }
+
+        qrTab.setOnClickListener {
+            mode = Mode.QR
+            updateTabs()
+            refresh()
+        }
+
+        tabs.addView(
+            barcodeTab,
+            LinearLayout.LayoutParams(0, -2, 1f).apply {
+                marginEnd = dp(6)
+            }
+        )
+
+        tabs.addView(
+            qrTab,
+            LinearLayout.LayoutParams(0, -2, 1f).apply {
+                marginStart = dp(6)
+            }
+        )
+
+        modeCard.addView(tabs)
+        page.addView(modeCard)
+
+        addGap(page, 12)
+
+        // DOSYA YÜKLEME ALANI
+
+        val fileCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(cardColor, 18)
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+        }
+
+        fileCard.addView(text("VERİ YÖNETİMİ", 11f, muted, true))
+        addGap(fileCard, 8)
+
+        val fileButtons = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        val loadButton = makeButton("＋  TXT DOSYASI YÜKLE", orange)
+        val sampleButton = makeButton("ÖRNEK VERİ", backgroundColor)
+
+        loadButton.setOnClickListener { pickTxt() }
+        sampleButton.setOnClickListener { addSamples() }
+
+        fileButtons.addView(
+            loadButton,
+            LinearLayout.LayoutParams(0, -2, 1.5f).apply {
+                marginEnd = dp(6)
+            }
+        )
+
+        fileButtons.addView(
+            sampleButton,
+            LinearLayout.LayoutParams(0, -2, 1f).apply {
+                marginStart = dp(6)
+            }
+        )
+
+        fileCard.addView(fileButtons)
+        page.addView(fileCard)
+
+        addGap(page, 12)
+
+        // HIZ AYARI
+
+        val speedCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(cardColor, 18)
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+        }
+
+        val speedHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        speedHeader.addView(
+            text("OTOMATİK AKIŞ HIZI", 11f, muted, true),
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        speedText = text("5 / 20", 13f, orangeLight, true)
+        speedHeader.addView(speedText)
+
+        speedCard.addView(speedHeader)
+
         speed = SeekBar(this).apply {
             max = 19
             progress = 4
-            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(s: SeekBar?, p: Int, fromUser: Boolean) { speedText.text = "Akış hızı: ${p + 1}" }
-                override fun onStartTrackingTouch(s: SeekBar?) {}
-                override fun onStopTrackingTouch(s: SeekBar?) {}
-            })
+            progressTintList =
+                android.content.res.ColorStateList.valueOf(orange)
+            thumbTintList =
+                android.content.res.ColorStateList.valueOf(orangeLight)
+
+            setOnSeekBarChangeListener(
+                object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(
+                        seekBar: SeekBar?,
+                        progress: Int,
+                        fromUser: Boolean
+                    ) {
+                        speedText.text = "${progress + 1} / 20"
+                    }
+
+                    override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                    override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+                }
+            )
         }
-        page.addView(speed)
-        status = TextView(this).apply {
-            text = "Hazır"
-            textSize = 13f
-            setTextColor(Color.rgb(60, 75, 90))
-            setPadding(2, 4, 2, 8)
+
+        speedCard.addView(speed)
+        page.addView(speedCard)
+
+        addGap(page, 12)
+
+        // ÇALIŞTIRMA KONTROLLERİ
+
+        val controlCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(cardColor, 18)
+            setPadding(dp(12), dp(12), dp(12), dp(12))
         }
+
+        controlCard.addView(text("AKIŞ KONTROLLERİ", 11f, muted, true))
+        addGap(controlCard, 8)
+
+        val controls = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        startButton = makeButton("▶  BAŞLAT", orange)
+        val stopButton = makeButton("■  DURDUR", backgroundColor)
+        val saveButton = makeButton("↓  PNG KAYDET", backgroundColor)
+
+        startButton.setOnClickListener { startScroll() }
+        stopButton.setOnClickListener { stopScroll() }
+        saveButton.setOnClickListener { saveAll() }
+
+        controls.addView(
+            startButton,
+            LinearLayout.LayoutParams(0, -2, 1f).apply {
+                marginEnd = dp(5)
+            }
+        )
+
+        controls.addView(
+            stopButton,
+            LinearLayout.LayoutParams(0, -2, 1f).apply {
+                marginHorizontal = dp(5)
+            }
+        )
+
+        controls.addView(
+            saveButton,
+            LinearLayout.LayoutParams(0, -2, 1f).apply {
+                marginStart = dp(5)
+            }
+        )
+
+        controlCard.addView(controls)
+        page.addView(controlCard)
+
+        addGap(page, 10)
+
+        // DURUM BİLGİSİ
+
+        status = text("Hazır", 12f, orangeLight, true)
+        status.setPadding(dp(4), dp(4), dp(4), dp(8))
         page.addView(status)
 
+        // KODLARIN GÖRÜNTÜLENDİĞİ ALAN
+
         scroller = ScrollView(this).apply {
-            setBackgroundColor(Color.WHITE)
+            background = rounded(Color.WHITE, 18)
             isFillViewport = false
+            clipToPadding = false
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+            scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY
         }
+
         container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(8, 8, 8, 24)
+            setPadding(dp(8), dp(8), dp(8), dp(24))
         }
+
         scroller.addView(container)
-        scroller.setOnScrollChangeListener { _, _, _, _, _ -> renderVisibleItems() }
-        page.addView(scroller, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        scroller.setOnScrollChangeListener {
+            _, _, _, _, _ -> renderVisibleItems()
+        }
+
+        page.addView(
+            scroller,
+            LinearLayout.LayoutParams(-1, 0, 1f)
+        )
+
         setContentView(page)
     }
 
-    private fun addSamples() {
-        if (values.isEmpty()) {
-            values.addAll(listOf("123456789012", "987654321098", "BARKODQR-2026", "000123456789"))
+    private fun updateTabs() {
+        if (mode == Mode.BARCODE) {
+            barcodeTab.background = rounded(orange, 14)
+            barcodeTab.setTextColor(white)
+
+            qrTab.background = rounded(backgroundColor, 14)
+            qrTab.setTextColor(white)
+        } else {
+            qrTab.background = rounded(orange, 14)
+            qrTab.setTextColor(white)
+
+            barcodeTab.background = rounded(backgroundColor, 14)
+            barcodeTab.setTextColor(white)
         }
+    }
+
+    private fun addSamples() {
+        stopScroll()
+
+        values.clear()
+        values.addAll(
+            listOf(
+                "123456789012",
+                "987654321098",
+                "BARKODQR-2026",
+                "000123456789",
+                "456789123456",
+                "QR-PRO-2026"
+            )
+        )
+
         refresh()
+        status.text = "${values.size} örnek kayıt hazır."
     }
 
     private fun pickTxt() {
@@ -126,23 +432,36 @@ class MainActivity : Activity() {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "text/plain"
         }
+
         startActivityForResult(intent, PICK_TXT)
     }
 
-    @Deprecated("Deprecated in Android API but retained for broad device compatibility")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    @Deprecated("Deprecated Android API retained for compatibility")
+    override fun onActivityResult(
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?
+    ) {
         super.onActivityResult(requestCode, resultCode, data)
+
         if (requestCode == PICK_TXT && resultCode == RESULT_OK) {
             val uri = data?.data ?: return
+
             try {
                 contentResolver.openInputStream(uri)?.use { stream ->
-                    val incoming = BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).readLines()
-                        .map { it.trim() }.filter { it.isNotEmpty() }
+                    val incoming = BufferedReader(
+                        InputStreamReader(stream, Charsets.UTF_8)
+                    ).readLines()
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+
                     values.clear()
                     values.addAll(incoming)
                 }
+
                 refresh()
-                status.text = "${values.size} kayıt yüklendi."
+                status.text = "${values.size} kayıt başarıyla yüklendi."
+
             } catch (e: Exception) {
                 status.text = "Dosya okunamadı: ${e.localizedMessage}"
             }
@@ -150,54 +469,112 @@ class MainActivity : Activity() {
     }
 
     private fun makeBitmap(value: String): Bitmap {
-        val format = if (mode == Mode.QR) BarcodeFormat.QR_CODE else BarcodeFormat.CODE_128
+
+        val format = if (mode == Mode.QR)
+            BarcodeFormat.QR_CODE
+        else
+            BarcodeFormat.CODE_128
+
         val width = if (mode == Mode.QR) 420 else 900
         val height = if (mode == Mode.QR) 420 else 230
+
         val hints = hashMapOf<EncodeHintType, Any>()
         hints[EncodeHintType.MARGIN] = 2
-        val matrix = MultiFormatWriter().encode(value, format, width, height, hints)
-        val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
-        for (x in 0 until width) for (y in 0 until height) {
-            bmp.setPixel(x, y, if (matrix[x, y]) Color.BLACK else Color.WHITE)
+
+        val matrix = MultiFormatWriter().encode(
+            value,
+            format,
+            width,
+            height,
+            hints
+        )
+
+        val bitmap = Bitmap.createBitmap(
+            width,
+            height,
+            Bitmap.Config.RGB_565
+        )
+
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                bitmap.setPixel(
+                    x,
+                    y,
+                    if (matrix[x, y]) Color.BLACK else Color.WHITE
+                )
+            }
         }
-        return bmp
+
+        return bitmap
     }
 
     private fun refresh() {
+
         stopScroll()
+
         container.removeAllViews()
         imageViews.clear()
+
         rowHeight = if (mode == Mode.QR) 390 else 190
+
         values.forEach { value ->
+
             val image = ImageView(this).apply {
                 adjustViewBounds = true
                 scaleType = ImageView.ScaleType.FIT_CENTER
-                setPadding(8, 8, 8, 2)
+                setPadding(dp(8), dp(8), dp(8), dp(2))
                 tag = null
             }
+
             imageViews.add(image)
-            container.addView(image, LinearLayout.LayoutParams(-1, if (mode == Mode.QR) 330 else 140))
+
+            container.addView(
+                image,
+                LinearLayout.LayoutParams(
+                    -1,
+                    if (mode == Mode.QR) dp(330) else dp(140)
+                )
+            )
+
             val label = TextView(this).apply {
                 text = value
                 textSize = 13f
                 setTextColor(Color.DKGRAY)
                 gravity = Gravity.CENTER
-                setPadding(0, 0, 0, 8)
+                setPadding(0, 0, 0, dp(8))
             }
+
             container.addView(label)
         }
-        status.text = "${values.size} kod hazır. ${if (mode == Mode.QR) "QR" else "Code 128"} modu."
-        renderVisibleItems()
+
+        status.text =
+            "${values.size} kod hazır • ${if (mode == Mode.QR) "QR KOD" else "CODE 128"}"
+
+        scroller.post {
+            scroller.scrollTo(0, 0)
+            renderVisibleItems()
+        }
     }
 
-    // Yalnızca ekranda görünen kodları üretir. Böylece binlerce kayıtta bellek şişmez.
+    // Yalnızca görünür kodların bitmap'leri oluşturulur.
+
     private fun renderVisibleItems() {
+
         if (imageViews.isEmpty()) return
-        val first = (scroller.scrollY / rowHeight).coerceAtLeast(0)
-        val last = (first + scroller.height / rowHeight + 3).coerceAtMost(imageViews.size - 1)
+
+        val first = (scroller.scrollY / dp(rowHeight)).coerceAtLeast(0)
+
+        val last = (
+            first + scroller.height / dp(rowHeight) + 3
+        ).coerceAtMost(imageViews.size - 1)
+
         imageViews.forEachIndexed { index, view ->
+
             if (index in first..last) {
-                val value = values.getOrNull(index) ?: return@forEachIndexed
+
+                val value = values.getOrNull(index)
+                    ?: return@forEachIndexed
+
                 if (view.tag != value) {
                     try {
                         view.setImageBitmap(makeBitmap(value))
@@ -206,7 +583,9 @@ class MainActivity : Activity() {
                         view.setImageDrawable(null)
                     }
                 }
+
             } else if (view.tag != null) {
+
                 view.setImageDrawable(null)
                 view.tag = null
             }
@@ -214,57 +593,158 @@ class MainActivity : Activity() {
     }
 
     private fun startScroll() {
+
         if (running) return
+
+        if (values.isEmpty()) {
+            status.text = "Önce TXT dosyası yüklemelisin."
+            return
+        }
+
         running = true
+        startButton.text = "▶  AKIŞ AKTİF"
+
         status.text = "Otomatik akış başladı."
+
         scrollThread = Thread {
+
             while (running) {
+
                 try {
+
                     runOnUiThread {
+
                         val distance = (speed.progress + 1) * 2
+
                         scroller.smoothScrollBy(0, distance)
-                        if (scroller.scrollY >= container.height - scroller.height) {
-                            scroller.postDelayed({ if (running) scroller.scrollTo(0, 0) }, 250)
+
+                        if (
+                            scroller.scrollY >=
+                            container.height - scroller.height
+                        ) {
+                            scroller.postDelayed({
+                                if (running) {
+                                    scroller.scrollTo(0, 0)
+                                }
+                            }, 250)
                         }
                     }
-                    Thread.sleep((55 - speed.progress * 2).toLong().coerceAtLeast(15))
-                } catch (_: InterruptedException) { break }
+
+                    Thread.sleep(
+                        (55 - speed.progress * 2)
+                            .toLong()
+                            .coerceAtLeast(15)
+                    )
+
+                } catch (_: InterruptedException) {
+                    break
+                }
             }
         }.also { it.start() }
     }
 
     private fun stopScroll() {
+
         running = false
+
         scrollThread?.interrupt()
         scrollThread = null
+
+        if (::startButton.isInitialized) {
+            startButton.text = "▶  BAŞLAT"
+        }
+
+        if (::status.isInitialized && values.isNotEmpty()) {
+            status.text = "${values.size} kod hazır."
+        }
     }
 
     private fun saveAll() {
-        if (values.isEmpty()) { status.text = "Kaydedilecek kod yok."; return }
+
+        if (values.isEmpty()) {
+            status.text = "Kaydedilecek kod bulunamadı."
+            return
+        }
+
+        val selectedMode = mode
+        val items = values.toList()
+
         Thread {
+
             var saved = 0
-            values.forEachIndexed { index, value ->
+
+            items.forEachIndexed { index, value ->
+
                 try {
-                    val bitmap = makeBitmap(value)
-                    val name = String.format(Locale.US, "%s_%04d.png", if (mode == Mode.QR) "QR" else "BARKOD", index + 1)
+
+                    val bitmap = makeBitmapForMode(value, selectedMode)
+
+                    val name = String.format(
+                        Locale.US,
+                        "%s_%04d.png",
+                        if (selectedMode == Mode.QR) "QR" else "BARKOD",
+                        index + 1
+                    )
+
                     val metadata = ContentValues().apply {
                         put(MediaStore.Images.Media.DISPLAY_NAME, name)
                         put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-                        put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/BarkodQRPro")
+                        put(
+                            MediaStore.Images.Media.RELATIVE_PATH,
+                            "Pictures/BarkodQRPro"
+                        )
                     }
-                    val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, metadata)
+
+                    val uri = contentResolver.insert(
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        metadata
+                    )
+
                     if (uri != null) {
-                        contentResolver.openOutputStream(uri)?.use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                        contentResolver.openOutputStream(uri)?.use {
+                            bitmap.compress(
+                                Bitmap.CompressFormat.PNG,
+                                100,
+                                it
+                            )
+                        }
                         saved++
                     }
+
                     bitmap.recycle()
-                } catch (_: Exception) { }
+
+                } catch (_: Exception) {
+                }
+
                 if (index % 25 == 0) {
-                    runOnUiThread { status.text = "PNG kaydediliyor: ${index + 1}/${values.size}" }
+                    runOnUiThread {
+                        status.text =
+                            "PNG kaydediliyor: ${index + 1}/${items.size}"
+                    }
                 }
             }
-            runOnUiThread { status.text = "$saved PNG, Galeri > Pictures/BarkodQRPro klasörüne kaydedildi." }
+
+            runOnUiThread {
+                status.text =
+                    "$saved PNG kaydedildi. Galeri > Pictures/BarkodQRPro"
+            }
+
         }.start()
+    }
+
+    private fun makeBitmapForMode(
+        value: String,
+        selectedMode: Mode
+    ): Bitmap {
+
+        val oldMode = mode
+
+        return try {
+            mode = selectedMode
+            makeBitmap(value)
+        } finally {
+            mode = oldMode
+        }
     }
 
     override fun onDestroy() {
