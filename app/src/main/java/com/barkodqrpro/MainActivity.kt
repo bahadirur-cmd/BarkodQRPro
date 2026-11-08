@@ -228,7 +228,7 @@ class MainActivity : Activity() {
                 val digitsOnly = source.toString().all { it.isDigit() }
                 if (digitsOnly) null else ""
             })
-            singleLine = true
+
             setPadding(dp(12), dp(12), dp(12), dp(12))
             background = rounded(backgroundColor, 12)
         }
