@@ -376,7 +376,7 @@ class MainActivity : Activity() {
 
         scrollView.addView(
             page,
-            ScrollView.LayoutParams(-1, -1)
+            android.widget.FrameLayout.LayoutParams(-1, -1)
         )
 
         // HEADER
