@@ -398,6 +398,7 @@ class MainActivity : Activity() {
                         fromUser: Boolean
                     ) {
                         speedText.text = "${progress + 1} / 20"
+                        if (running) restartTimer()
                     }
 
                     override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -626,7 +627,6 @@ class MainActivity : Activity() {
 
                     refresh()
                     status.text = "${values.size} kayıt başarıyla yüklendi."
-
                 }
 
             } catch (e: Exception) {
@@ -784,8 +784,19 @@ class MainActivity : Activity() {
             if (currentIndex < values.lastIndex && values.isNotEmpty()) 1f else 0.4f
     }
 
+    // HIZ AYARI
+    // 1. kademe: 1700 ms
+    // 10. kademe: 350 ms
+    // 20. kademe: 80 ms
+
     private fun getInterval(): Long {
-        return 3200L - (speed.progress * 150L)
+        val level = speed.progress + 1
+
+        return if (level <= 10) {
+            1700L - ((level - 1) * 150L)
+        } else {
+            350L - ((level - 10) * 27L)
+        }
     }
 
     private fun startPlayback() {
