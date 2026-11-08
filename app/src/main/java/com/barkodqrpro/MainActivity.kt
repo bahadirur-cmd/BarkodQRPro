@@ -1,3 +1,4 @@
+
 package com.barkodqrpro
 
 import android.app.Activity
@@ -49,7 +50,6 @@ class MainActivity : Activity() {
     private lateinit var nextButton: TextView
     private lateinit var soundButton: TextView
 
-    // DEEP PULSE SES SISTEMI
     private var soundPool: SoundPool? = null
     private var soundId = 0
     private var soundLoaded = false
@@ -72,12 +72,14 @@ class MainActivity : Activity() {
 
     private val PICK_TXT = 41
 
-    private val backgroundColor = Color.rgb(38, 50, 56)
-    private val cardColor = Color.rgb(55, 71, 79)
+    private val backgroundColor = Color.rgb(15, 19, 24)
+    private val cardColor = Color.rgb(29, 36, 44)
+    private val innerColor = Color.rgb(20, 26, 33)
     private val orange = Color.rgb(255, 133, 0)
     private val orangeLight = Color.rgb(255, 165, 65)
     private val white = Color.WHITE
-    private val muted = Color.rgb(190, 202, 207)
+    private val muted = Color.rgb(150, 163, 174)
+    private val borderColor = Color.rgb(54, 65, 76)
 
     private val autoRunnable = object : Runnable {
         override fun run() {
@@ -103,7 +105,8 @@ class MainActivity : Activity() {
         showSplashScreen()
     }
 
-    // UR52 CODEX ACILIS EKRANI
+    // AÇILIŞ EKRANI
+
     private fun showSplashScreen() {
 
         val splash = LinearLayout(this).apply {
@@ -224,7 +227,8 @@ class MainActivity : Activity() {
         }, 2100)
     }
 
-    // DEEP PULSE SESINI YUKLE
+    // SES SİSTEMİ
+
     private fun initializeSound() {
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
@@ -261,16 +265,23 @@ class MainActivity : Activity() {
     private fun updateSoundButton() {
         if (!::soundButton.isInitialized) return
 
-        if (soundEnabled) {
-            soundButton.text = "♫  SES AÇIK"
-            soundButton.background = rounded(orange, 12)
-            soundButton.setTextColor(white)
-        } else {
-            soundButton.text = "♫  SES KAPALI"
-            soundButton.background = rounded(backgroundColor, 12)
-            soundButton.setTextColor(muted)
-        }
+        soundButton.text = if (soundEnabled) "♫" else "♪"
+
+        soundButton.background = rounded(
+            if (soundEnabled) Color.rgb(65, 43, 24) else innerColor,
+            12,
+            if (soundEnabled) orange else borderColor
+        )
+
+        soundButton.setTextColor(
+            if (soundEnabled) orangeLight else muted
+        )
+
+        soundButton.contentDescription =
+            if (soundEnabled) "Sesi kapat" else "Sesi aç"
     }
+
+    // TASARIM ARAÇLARI
 
     private fun dp(value: Int): Int =
         (value * resources.displayMetrics.density).toInt()
@@ -283,6 +294,7 @@ class MainActivity : Activity() {
         return GradientDrawable().apply {
             setColor(color)
             cornerRadius = dp(radius).toFloat()
+
             if (strokeColor != Color.TRANSPARENT) {
                 setStroke(dp(1), strokeColor)
             }
@@ -300,6 +312,7 @@ class MainActivity : Activity() {
             textSize = size
             setTextColor(color)
             gravity = Gravity.CENTER_VERTICAL
+
             if (bold) setTypeface(null, Typeface.BOLD)
         }
     }
@@ -308,7 +321,7 @@ class MainActivity : Activity() {
         label: String,
         color: Int,
         textColor: Int = white,
-        radius: Int = 14
+        radius: Int = 12
     ): TextView {
         return TextView(this).apply {
             text = label
@@ -324,38 +337,67 @@ class MainActivity : Activity() {
     }
 
     private fun addGap(parent: LinearLayout, height: Int) {
-        parent.addView(View(this), LinearLayout.LayoutParams(1, dp(height)))
+        parent.addView(
+            View(this),
+            LinearLayout.LayoutParams(1, dp(height))
+        )
     }
+
+    private fun makeCard(): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = rounded(cardColor, 15, borderColor)
+            setPadding(dp(11), dp(10), dp(11), dp(10))
+        }
+    }
+
+    private fun sectionTitle(value: String): TextView {
+        return text(value, 10f, muted, true).apply {
+            letterSpacing = 0.08f
+        }
+    }
+
+    // YENİ ANA ARAYÜZ
 
     private fun buildUi() {
 
-        val page = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(6), dp(12), dp(6))
+        val scrollView = ScrollView(this).apply {
+            setFillViewport(true)
+            clipToPadding = false
+            isVerticalScrollBarEnabled = false
             setBackgroundColor(backgroundColor)
         }
+
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(10), dp(14), dp(18))
+            setBackgroundColor(backgroundColor)
+        }
+
+        scrollView.addView(
+            page,
+            ScrollView.LayoutParams(-1, -1)
+        )
 
         // HEADER
 
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(3), dp(3), dp(3), dp(8))
+            setPadding(dp(2), dp(2), dp(2), dp(12))
         }
 
         val logo = ImageView(this).apply {
             setImageResource(R.drawable.barkodqr_logo)
             scaleType = ImageView.ScaleType.FIT_CENTER
-            background = rounded(cardColor, 16)
-            setPadding(dp(3), dp(3), dp(3), dp(3))
-            layoutParams = LinearLayout.LayoutParams(dp(68), dp(68))
+            layoutParams = LinearLayout.LayoutParams(dp(54), dp(54))
         }
 
         header.addView(logo)
 
         val titleArea = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(11), 0, 0, 0)
+            setPadding(dp(9), 0, 0, 0)
         }
 
         val brandText = SpannableString("UR52 CODEX").apply {
@@ -377,7 +419,7 @@ class MainActivity : Activity() {
             )
         }
 
-        val brandTitle = text("", 24f, white, true).apply {
+        val brandTitle = text("", 23f, white, true).apply {
             text = brandText
             typeface = Typeface.create(
                 "sans-serif-condensed",
@@ -388,7 +430,7 @@ class MainActivity : Activity() {
 
         titleArea.addView(brandTitle)
         titleArea.addView(
-            text("CODE GENERATION SYSTEM", 10f, orangeLight, true)
+            text("CODE GENERATION SYSTEM", 9f, orangeLight, true)
         )
 
         header.addView(
@@ -396,25 +438,61 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
-        page.addView(header)
+        // KÜÇÜK SES SİMGESİ
 
-        // MODE CARD
-
-        val modeCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = rounded(cardColor, 16)
-            setPadding(dp(10), dp(9), dp(10), dp(9))
+        soundButton = TextView(this).apply {
+            textSize = 23f
+            gravity = Gravity.CENTER
+            setTypeface(null, Typeface.BOLD)
+            isClickable = true
+            isFocusable = true
+            setPadding(0, 0, 0, 0)
+            layoutParams = LinearLayout.LayoutParams(dp(42), dp(42))
         }
 
-        modeCard.addView(text("OLUŞTURMA MODU", 10f, muted, true))
-        addGap(modeCard, 6)
+        soundButton.setOnClickListener {
+            soundEnabled = !soundEnabled
+            updateSoundButton()
+
+            status.text = if (soundEnabled) {
+                "Deep Pulse sesi açıldı."
+            } else {
+                "Deep Pulse sesi kapatıldı."
+            }
+        }
+
+        header.addView(soundButton)
+        updateSoundButton()
+
+        page.addView(header)
+
+        // MOD SEÇİMİ
+
+        val modeCard = makeCard()
+
+        val modeHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        modeHeader.addView(
+            sectionTitle("OLUŞTURMA MODU"),
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        modeHeader.addView(
+            text("01 / 02", 9f, orangeLight, true)
+        )
+
+        modeCard.addView(modeHeader)
+        addGap(modeCard, 8)
 
         val tabs = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
         }
 
         barcodeTab = makeButton("▥  CODE128", orange)
-        qrTab = makeButton("▦  QR KOD", backgroundColor)
+        qrTab = makeButton("▦  QR KOD", innerColor)
 
         barcodeTab.setOnClickListener {
             mode = Mode.BARCODE
@@ -432,14 +510,14 @@ class MainActivity : Activity() {
 
         tabs.addView(
             barcodeTab,
-            LinearLayout.LayoutParams(0, -2, 1f).apply {
+            LinearLayout.LayoutParams(0, dp(42), 1f).apply {
                 marginEnd = dp(5)
             }
         )
 
         tabs.addView(
             qrTab,
-            LinearLayout.LayoutParams(0, -2, 1f).apply {
+            LinearLayout.LayoutParams(0, dp(42), 1f).apply {
                 marginStart = dp(5)
             }
         )
@@ -447,27 +525,28 @@ class MainActivity : Activity() {
         modeCard.addView(tabs)
         page.addView(modeCard)
 
-        addGap(page, 8)
+        addGap(page, 9)
 
-        // FILE AND MANUAL CARDS
+        // VERİ GİRİŞİ
 
         val inputCards = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.TOP
         }
 
-        val fileCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = rounded(cardColor, 16)
-            setPadding(dp(9), dp(10), dp(9), dp(10))
-        }
+        val fileCard = makeCard()
+        fileCard.addView(sectionTitle("TOPLU VERİ"))
+        addGap(fileCard, 8)
 
-        fileCard.addView(text("TOPLU VERİ", 10f, muted, true))
-        addGap(fileCard, 7)
-
-        val loadButton = makeButton("＋ TXT YÜKLE", orange)
+        val loadButton = makeButton("＋ TXT YÜKLE", innerColor)
+        loadButton.background = rounded(innerColor, 10, orange)
+        loadButton.setTextColor(orangeLight)
         loadButton.setOnClickListener { pickTxt() }
-        fileCard.addView(loadButton)
+
+        fileCard.addView(
+            loadButton,
+            LinearLayout.LayoutParams(-1, dp(42))
+        )
 
         inputCards.addView(
             fileCard,
@@ -476,14 +555,9 @@ class MainActivity : Activity() {
             }
         )
 
-        val manualCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = rounded(cardColor, 16)
-            setPadding(dp(9), dp(10), dp(9), dp(10))
-        }
-
-        manualCard.addView(text("TEKLİ KOD", 10f, muted, true))
-        addGap(manualCard, 7)
+        val manualCard = makeCard()
+        manualCard.addView(sectionTitle("TEKLİ KOD"))
+        addGap(manualCard, 8)
 
         val manualRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -492,7 +566,7 @@ class MainActivity : Activity() {
 
         numberInput = EditText(this).apply {
             hint = "Numara"
-            textSize = 13f
+            textSize = 12f
             setTextColor(white)
             setHintTextColor(muted)
             inputType = InputType.TYPE_CLASS_NUMBER
@@ -504,8 +578,8 @@ class MainActivity : Activity() {
             )
 
             setSingleLine(true)
-            setPadding(dp(7), dp(10), dp(7), dp(10))
-            background = rounded(backgroundColor, 10)
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            background = rounded(innerColor, 9, borderColor)
         }
 
         manualRow.addView(
@@ -515,13 +589,16 @@ class MainActivity : Activity() {
             }
         )
 
-        val createButton = makeButton("＋ OLUŞTUR", orange)
-        createButton.textSize = 10f
-        createButton.setOnClickListener { createSingleCode() }
+        val createButton = makeButton("＋", orange)
+        createButton.textSize = 18f
+
+        createButton.setOnClickListener {
+            createSingleCode()
+        }
 
         manualRow.addView(
             createButton,
-            LinearLayout.LayoutParams(dp(82), dp(42))
+            LinearLayout.LayoutParams(dp(43), dp(42))
         )
 
         manualCard.addView(manualRow)
@@ -535,15 +612,156 @@ class MainActivity : Activity() {
 
         page.addView(inputCards)
 
-        addGap(page, 8)
+        addGap(page, 9)
 
-        // SPEED CARD
+        // BARKOD / QR SONUÇ ALANI
 
-        val speedCard = LinearLayout(this).apply {
+        val resultCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = rounded(cardColor, 16)
-            setPadding(dp(11), dp(8), dp(11), dp(5))
+            background = rounded(Color.WHITE, 15)
+            setPadding(dp(10), dp(9), dp(10), dp(8))
         }
+
+        val resultHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        resultHeader.addView(
+            text("CANLI GÖRÜNTÜLEME", 10f, Color.DKGRAY, true),
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        counterText = text("000 / 000", 11f, Color.rgb(210, 105, 0), true)
+        resultHeader.addView(counterText)
+
+        resultCard.addView(resultHeader)
+
+        addGap(resultCard, 5)
+
+        resultImage = ImageView(this).apply {
+            adjustViewBounds = true
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setBackgroundColor(Color.WHITE)
+        }
+
+        resultCard.addView(
+            resultImage,
+            LinearLayout.LayoutParams(-1, dp(190))
+        )
+
+        resultLabel = TextView(this).apply {
+            text = "Henüz kod oluşturulmadı"
+            textSize = 13f
+            setTextColor(Color.DKGRAY)
+            gravity = Gravity.CENTER
+            setTypeface(null, Typeface.BOLD)
+            setPadding(dp(4), dp(7), dp(4), dp(3))
+        }
+
+        resultCard.addView(resultLabel)
+
+        page.addView(
+            resultCard,
+            LinearLayout.LayoutParams(-1, -2)
+        )
+
+        addGap(page, 9)
+
+        // KONTROLLER
+
+        val controlCard = makeCard()
+
+        val controlHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        controlHeader.addView(
+            sectionTitle("BARKOD KONTROLLERİ"),
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
+        controlHeader.addView(
+            text("PLAYBACK", 9f, orangeLight, true)
+        )
+
+        controlCard.addView(controlHeader)
+        addGap(controlCard, 9)
+
+        val navigationRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        previousButton = makeButton("◀", innerColor)
+        nextButton = makeButton("▶", innerColor)
+
+        previousButton.setOnClickListener {
+            if (currentIndex > 0) {
+                showIndex(currentIndex - 1, true)
+                if (running) restartTimer()
+            }
+        }
+
+        nextButton.setOnClickListener {
+            if (currentIndex < values.lastIndex) {
+                showIndex(currentIndex + 1, true)
+                if (running) restartTimer()
+            }
+        }
+
+        navigationRow.addView(
+            previousButton,
+            LinearLayout.LayoutParams(0, dp(43), 1f).apply {
+                marginEnd = dp(5)
+            }
+        )
+
+        navigationRow.addView(
+            nextButton,
+            LinearLayout.LayoutParams(0, dp(43), 1f).apply {
+                marginStart = dp(5)
+            }
+        )
+
+        controlCard.addView(navigationRow)
+
+        addGap(controlCard, 7)
+
+        val playbackRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        startButton = makeButton("▶ BAŞLAT", orange)
+        val stopButton = makeButton("■ DURDUR", innerColor)
+
+        startButton.setOnClickListener { startPlayback() }
+        stopButton.setOnClickListener { stopPlayback() }
+
+        playbackRow.addView(
+            startButton,
+            LinearLayout.LayoutParams(0, dp(43), 1f).apply {
+                marginEnd = dp(5)
+            }
+        )
+
+        playbackRow.addView(
+            stopButton,
+            LinearLayout.LayoutParams(0, dp(43), 1f).apply {
+                marginStart = dp(5)
+            }
+        )
+
+        controlCard.addView(playbackRow)
+
+        page.addView(controlCard)
+
+        addGap(page, 9)
+
+        // HIZ AYARI
+
+        val speedCard = makeCard()
 
         val speedHeader = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -551,24 +769,28 @@ class MainActivity : Activity() {
         }
 
         speedHeader.addView(
-            text("OTOMATİK GEÇİŞ HIZI", 10f, muted, true),
+            sectionTitle("OTOMATİK GEÇİŞ HIZI"),
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
-        speedText = text("5 / 20", 11f, orangeLight, true)
+        speedText = text("5 / 20", 12f, orangeLight, true)
         speedHeader.addView(speedText)
+
         speedCard.addView(speedHeader)
 
         speed = SeekBar(this).apply {
             max = 19
             progress = 4
+
             progressTintList =
                 android.content.res.ColorStateList.valueOf(orange)
+
             thumbTintList =
                 android.content.res.ColorStateList.valueOf(orangeLight)
 
             setOnSeekBarChangeListener(
                 object : SeekBar.OnSeekBarChangeListener {
+
                     override fun onProgressChanged(
                         seekBar: SeekBar?,
                         progress: Int,
@@ -588,168 +810,21 @@ class MainActivity : Activity() {
         speedCard.addView(speed)
         page.addView(speedCard)
 
-        addGap(page, 7)
+        addGap(page, 8)
 
-        // NAVIGATION CONTROLS
+        // DURUM BİLGİSİ
 
-        val controlCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = rounded(cardColor, 16)
-            setPadding(dp(10), dp(8), dp(10), dp(8))
-        }
-
-        controlCard.addView(
-            text("BARKOD KONTROLLERİ", 10f, muted, true)
-        )
-
-        addGap(controlCard, 7)
-
-        val navigationRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+        status = text("Hazır", 11f, orangeLight, true).apply {
+            setPadding(dp(4), dp(3), dp(4), dp(3))
             gravity = Gravity.CENTER_VERTICAL
         }
 
-        previousButton = makeButton("◀ ÖNCEKİ", backgroundColor)
-        nextButton = makeButton("SONRAKİ ▶", backgroundColor)
-
-        previousButton.setOnClickListener {
-            if (currentIndex > 0) {
-                showIndex(currentIndex - 1, true)
-                if (running) restartTimer()
-            }
-        }
-
-        nextButton.setOnClickListener {
-            if (currentIndex < values.lastIndex) {
-                showIndex(currentIndex + 1, true)
-                if (running) restartTimer()
-            }
-        }
-
-        navigationRow.addView(
-            previousButton,
-            LinearLayout.LayoutParams(0, -2, 1f).apply {
-                marginEnd = dp(5)
-            }
-        )
-
-        counterText = text("000 / 000", 12f, orangeLight, true).apply {
-            gravity = Gravity.CENTER
-        }
-
-        navigationRow.addView(
-            counterText,
-            LinearLayout.LayoutParams(dp(90), -2)
-        )
-
-        navigationRow.addView(
-            nextButton,
-            LinearLayout.LayoutParams(0, -2, 1f).apply {
-                marginStart = dp(5)
-            }
-        )
-
-        controlCard.addView(navigationRow)
-
-        addGap(controlCard, 7)
-
-        val playbackRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
-
-        startButton = makeButton("▶ BAŞLAT", orange)
-        val stopButton = makeButton("■ DURDUR", backgroundColor)
-
-        startButton.setOnClickListener { startPlayback() }
-        stopButton.setOnClickListener { stopPlayback() }
-
-        playbackRow.addView(
-            startButton,
-            LinearLayout.LayoutParams(0, -2, 1f).apply {
-                marginEnd = dp(5)
-            }
-        )
-
-        playbackRow.addView(
-            stopButton,
-            LinearLayout.LayoutParams(0, -2, 1f).apply {
-                marginStart = dp(5)
-            }
-        )
-
-        controlCard.addView(playbackRow)
-
-        // SES AÇMA / KAPAMA DÜĞMESİ
-
-        addGap(controlCard, 7)
-
-        soundButton = makeButton("♫  SES AÇIK", orange)
-        soundButton.setOnClickListener {
-            soundEnabled = !soundEnabled
-            updateSoundButton()
-
-            status.text = if (soundEnabled) {
-                "Deep Pulse sesi açıldı."
-            } else {
-                "Deep Pulse sesi kapatıldı."
-            }
-        }
-
-        controlCard.addView(
-            soundButton,
-            LinearLayout.LayoutParams(-1, -2)
-        )
-
-        updateSoundButton()
-
-        page.addView(controlCard)
-
-        addGap(page, 5)
-
-        // STATUS
-
-        status = text("Hazır", 11f, orangeLight, true)
-        status.setPadding(dp(3), dp(2), dp(3), dp(3))
         page.addView(status)
 
-        // SINGLE RESULT AREA
-
-        val resultCard = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            background = rounded(Color.WHITE, 16)
-            setPadding(dp(8), dp(8), dp(8), dp(8))
-        }
-
-        resultImage = ImageView(this).apply {
-            adjustViewBounds = true
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            setBackgroundColor(Color.WHITE)
-        }
-
-        resultCard.addView(
-            resultImage,
-            LinearLayout.LayoutParams(-1, 0, 1f)
-        )
-
-        resultLabel = TextView(this).apply {
-            text = ""
-            textSize = 14f
-            setTextColor(Color.DKGRAY)
-            gravity = Gravity.CENTER
-            setTypeface(null, Typeface.BOLD)
-            setPadding(dp(4), dp(7), dp(4), dp(4))
-        }
-
-        resultCard.addView(resultLabel)
-
-        page.addView(
-            resultCard,
-            LinearLayout.LayoutParams(-1, 0, 1f)
-        )
-
-        setContentView(page)
+        setContentView(scrollView)
     }
+
+    // TEKLİ KOD OLUŞTURMA
 
     private fun createSingleCode() {
         val number = numberInput.text.toString().trim()
@@ -777,19 +852,25 @@ class MainActivity : Activity() {
         inputMethod.hideSoftInputFromWindow(numberInput.windowToken, 0)
     }
 
+    // MOD GÖRÜNÜMÜ
+
     private fun updateTabs() {
         if (mode == Mode.BARCODE) {
-            barcodeTab.background = rounded(orange, 14)
+            barcodeTab.background = rounded(orange, 12)
             barcodeTab.setTextColor(white)
-            qrTab.background = rounded(backgroundColor, 14)
-            qrTab.setTextColor(white)
+
+            qrTab.background = rounded(innerColor, 12)
+            qrTab.setTextColor(muted)
         } else {
-            qrTab.background = rounded(orange, 14)
+            qrTab.background = rounded(orange, 12)
             qrTab.setTextColor(white)
-            barcodeTab.background = rounded(backgroundColor, 14)
-            barcodeTab.setTextColor(white)
+
+            barcodeTab.background = rounded(innerColor, 12)
+            barcodeTab.setTextColor(muted)
         }
     }
+
+    // TXT DOSYASI
 
     private fun pickTxt() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -813,6 +894,7 @@ class MainActivity : Activity() {
 
             try {
                 contentResolver.openInputStream(uri)?.use { stream ->
+
                     val incoming =
                         BufferedReader(
                             InputStreamReader(stream, Charsets.UTF_8)
@@ -822,6 +904,7 @@ class MainActivity : Activity() {
                             .filter { it.isNotEmpty() }
 
                     stopPlayback()
+
                     values.clear()
                     values.addAll(incoming)
                     currentIndex = 0
@@ -836,11 +919,17 @@ class MainActivity : Activity() {
         }
     }
 
+    // BARKOD VE QR ÜRETİMİ
+
     private fun getCacheKey(value: String): String {
         return "${mode.name}_$value"
     }
 
-    private fun makeBitmap(value: String, selectedMode: Mode): Bitmap {
+    private fun makeBitmap(
+        value: String,
+        selectedMode: Mode
+    ): Bitmap {
+
         val format =
             if (selectedMode == Mode.QR) BarcodeFormat.QR_CODE
             else BarcodeFormat.CODE_128
@@ -878,6 +967,8 @@ class MainActivity : Activity() {
         return bitmap
     }
 
+    // EKRANI YENİLEME
+
     private fun refresh() {
         stopPlayback()
 
@@ -892,12 +983,17 @@ class MainActivity : Activity() {
         }
 
         currentIndex = currentIndex.coerceIn(0, values.lastIndex)
+
         showIndex(currentIndex)
+
         status.text =
             "${values.size} kayıt hazır • ${if (mode == Mode.QR) "QR KOD" else "CODE128"}"
     }
 
-    private fun showIndex(index: Int, playSound: Boolean = false) {
+    private fun showIndex(
+        index: Int,
+        playSound: Boolean = false
+    ) {
         if (values.isEmpty()) return
 
         currentIndex = index.coerceIn(0, values.lastIndex)
@@ -943,8 +1039,10 @@ class MainActivity : Activity() {
                         mode == selectedMode
                     ) {
                         resultImage.setImageBitmap(bitmap)
+
                         status.text =
                             "${currentIndex + 1} / ${values.size} kayıt gösteriliyor."
+
                         prefetchNext()
                     }
                 }
@@ -952,15 +1050,19 @@ class MainActivity : Activity() {
             } catch (e: Exception) {
                 handler.post {
                     if (token == generationToken) {
-                        status.text = "Kod oluşturulamadı: ${e.localizedMessage}"
+                        status.text =
+                            "Kod oluşturulamadı: ${e.localizedMessage}"
                     }
                 }
             }
         }
     }
 
+    // SONRAKİ KODU ÖNCEDEN HAZIRLAMA
+
     private fun prefetchNext() {
         val nextIndex = currentIndex + 1
+
         if (nextIndex !in values.indices) return
 
         val nextValue = values[nextIndex]
@@ -974,10 +1076,12 @@ class MainActivity : Activity() {
                 val bitmap = makeBitmap(nextValue, selectedMode)
                 bitmapCache.put(cacheKey, bitmap)
             } catch (_: Exception) {
-                // Sonraki kod gerektiğinde yeniden hazırlanır.
+                // Gerektiğinde yeniden hazırlanır.
             }
         }
     }
+
+    // GEZİNME BUTONLARI
 
     private fun updateNavigationButtons() {
         if (!::previousButton.isInitialized) return
@@ -1004,6 +1108,8 @@ class MainActivity : Activity() {
         }
     }
 
+    // OTOMATİK OYNATMA
+
     private fun startPlayback() {
         if (values.isEmpty()) {
             status.text = "Önce TXT yükle veya tekli kod oluştur."
@@ -1023,6 +1129,7 @@ class MainActivity : Activity() {
 
     private fun restartTimer() {
         handler.removeCallbacks(autoRunnable)
+
         if (running) {
             handler.postDelayed(autoRunnable, getInterval())
         }
@@ -1037,9 +1144,12 @@ class MainActivity : Activity() {
         }
     }
 
+    // KAPANIŞ
+
     override fun onDestroy() {
         stopPlayback()
         generationToken++
+
         handler.removeCallbacksAndMessages(null)
         imageExecutor.shutdownNow()
 
