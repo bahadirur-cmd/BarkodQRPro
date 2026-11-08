@@ -19,11 +19,13 @@ import android.text.style.StyleSpan
 import android.view.Gravity
 import android.view.View
 import android.widget.*
+import android.util.LruCache
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.MultiFormatWriter
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
 
@@ -31,10 +33,10 @@ class MainActivity : Activity() {
 
     private var mode = Mode.BARCODE
     private val values = mutableListOf<String>()
-    private val imageViews = mutableListOf<ImageView>()
 
-    private lateinit var container: LinearLayout
-    private lateinit var scroller: ScrollView
+    private lateinit var resultImage: ImageView
+    private lateinit var resultLabel: TextView
+    private lateinit var counterText: TextView
     private lateinit var status: TextView
     private lateinit var speed: SeekBar
     private lateinit var speedText: TextView
@@ -42,9 +44,23 @@ class MainActivity : Activity() {
     private lateinit var qrTab: TextView
     private lateinit var startButton: TextView
     private lateinit var numberInput: EditText
+    private lateinit var previousButton: TextView
+    private lateinit var nextButton: TextView
 
+    private var currentIndex = 0
     private var running = false
-    private val scrollHandler = Handler(Looper.getMainLooper())
+    private var generationToken = 0
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val imageExecutor = Executors.newSingleThreadExecutor()
+
+    private val bitmapCache = object : LruCache<String, Bitmap>(
+        (Runtime.getRuntime().maxMemory() / 1024 / 8).toInt()
+    ) {
+        override fun sizeOf(key: String, bitmap: Bitmap): Int {
+            return bitmap.byteCount / 1024
+        }
+    }
 
     private val PICK_TXT = 41
 
@@ -55,20 +71,17 @@ class MainActivity : Activity() {
     private val white = Color.WHITE
     private val muted = Color.rgb(190, 202, 207)
 
-    private val scrollRunnable = object : Runnable {
+    private val autoRunnable = object : Runnable {
         override fun run() {
             if (!running) return
 
-            val step = dp((1.0f + speed.progress * 0.35f).toInt().coerceAtLeast(1))
-            scroller.scrollBy(0, step)
-
-            val maxScroll = (container.height - scroller.height).coerceAtLeast(0)
-
-            if (maxScroll > 0 && scroller.scrollY >= maxScroll) {
-                scroller.scrollTo(0, 0)
+            if (currentIndex < values.lastIndex) {
+                showIndex(currentIndex + 1)
+                handler.postDelayed(this, getInterval())
+            } else {
+                stopPlayback()
+                status.text = "Son kayda ulaşıldı."
             }
-
-            scrollHandler.postDelayed(this, 16L)
         }
     }
 
@@ -189,7 +202,10 @@ class MainActivity : Activity() {
 
         val brandTitle = text("", 24f, white, true).apply {
             text = brandText
-            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD_ITALIC)
+            typeface = Typeface.create(
+                "sans-serif-condensed",
+                Typeface.BOLD_ITALIC
+            )
             letterSpacing = 0.04f
         }
 
@@ -256,7 +272,7 @@ class MainActivity : Activity() {
 
         addGap(page, 8)
 
-        // FILE AND MANUAL CARDS SIDE BY SIDE
+        // FILE AND MANUAL CARDS
 
         val inputCards = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -358,7 +374,7 @@ class MainActivity : Activity() {
         }
 
         speedHeader.addView(
-            text("OTOMATİK AKIŞ HIZI", 10f, muted, true),
+            text("OTOMATİK GEÇİŞ HIZI", 10f, muted, true),
             LinearLayout.LayoutParams(0, -2, 1f)
         )
 
@@ -385,6 +401,7 @@ class MainActivity : Activity() {
                     }
 
                     override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
                     override fun onStopTrackingTouch(seekBar: SeekBar?) {}
                 }
             )
@@ -395,43 +412,94 @@ class MainActivity : Activity() {
 
         addGap(page, 7)
 
-        // FLOW CONTROLS
+        // NAVIGATION CONTROLS
 
         val controlCard = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+            orientation = LinearLayout.VERTICAL
             background = rounded(cardColor, 16)
             setPadding(dp(10), dp(8), dp(10), dp(8))
         }
 
         controlCard.addView(
-            text("AKIŞ KONTROLLERİ", 10f, muted, true),
-            LinearLayout.LayoutParams(0, -2, 1f)
+            text("BARKOD KONTROLLERİ", 10f, muted, true)
         )
 
-        val controls = LinearLayout(this).apply {
+        addGap(controlCard, 7)
+
+        val navigationRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        previousButton = makeButton("◀ ÖNCEKİ", backgroundColor)
+        nextButton = makeButton("SONRAKİ ▶", backgroundColor)
+
+        previousButton.setOnClickListener {
+            if (currentIndex > 0) {
+                showIndex(currentIndex - 1)
+                if (running) restartTimer()
+            }
+        }
+
+        nextButton.setOnClickListener {
+            if (currentIndex < values.lastIndex) {
+                showIndex(currentIndex + 1)
+                if (running) restartTimer()
+            }
+        }
+
+        navigationRow.addView(
+            previousButton,
+            LinearLayout.LayoutParams(0, -2, 1f).apply {
+                marginEnd = dp(5)
+            }
+        )
+
+        counterText = text("000 / 000", 12f, orangeLight, true).apply {
+            gravity = Gravity.CENTER
+        }
+
+        navigationRow.addView(
+            counterText,
+            LinearLayout.LayoutParams(dp(90), -2)
+        )
+
+        navigationRow.addView(
+            nextButton,
+            LinearLayout.LayoutParams(0, -2, 1f).apply {
+                marginStart = dp(5)
+            }
+        )
+
+        controlCard.addView(navigationRow)
+
+        addGap(controlCard, 7)
+
+        val playbackRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
         }
 
         startButton = makeButton("▶ BAŞLAT", orange)
         val stopButton = makeButton("■ DURDUR", backgroundColor)
 
-        startButton.setOnClickListener { startScroll() }
-        stopButton.setOnClickListener { stopScroll() }
+        startButton.setOnClickListener { startPlayback() }
+        stopButton.setOnClickListener { stopPlayback() }
 
-        controls.addView(
+        playbackRow.addView(
             startButton,
-            LinearLayout.LayoutParams(dp(104), -2).apply {
+            LinearLayout.LayoutParams(0, -2, 1f).apply {
                 marginEnd = dp(5)
             }
         )
 
-        controls.addView(
+        playbackRow.addView(
             stopButton,
-            LinearLayout.LayoutParams(dp(104), -2)
+            LinearLayout.LayoutParams(0, -2, 1f).apply {
+                marginStart = dp(5)
+            }
         )
 
-        controlCard.addView(controls)
+        controlCard.addView(playbackRow)
         page.addView(controlCard)
 
         addGap(page, 5)
@@ -442,32 +510,39 @@ class MainActivity : Activity() {
         status.setPadding(dp(3), dp(2), dp(3), dp(3))
         page.addView(status)
 
-        // BARCODE RESULT AREA
+        // SINGLE RESULT AREA
 
-        scroller = ScrollView(this).apply {
-            background = rounded(Color.WHITE, 16)
-            isFillViewport = false
-            clipToPadding = false
-            setPadding(dp(3), dp(3), dp(3), dp(3))
-            scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY
-            minimumHeight = dp(130)
-        }
-
-        container = LinearLayout(this).apply {
+        val resultCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(6), dp(6), dp(6), dp(12))
+            gravity = Gravity.CENTER
+            background = rounded(Color.WHITE, 16)
+            setPadding(dp(8), dp(8), dp(8), dp(8))
         }
 
-        scroller.addView(container)
-
-        scroller.setOnScrollChangeListener {
-                _, _, _, _, _ ->
-            renderVisibleItems()
+        resultImage = ImageView(this).apply {
+            adjustViewBounds = true
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setBackgroundColor(Color.WHITE)
         }
+
+        resultCard.addView(
+            resultImage,
+            LinearLayout.LayoutParams(-1, 0, 1f)
+        )
+
+        resultLabel = TextView(this).apply {
+            text = ""
+            textSize = 14f
+            setTextColor(Color.DKGRAY)
+            gravity = Gravity.CENTER
+            setTypeface(null, Typeface.BOLD)
+            setPadding(dp(4), dp(7), dp(4), dp(4))
+        }
+
+        resultCard.addView(resultLabel)
 
         page.addView(
-            scroller,
+            resultCard,
             LinearLayout.LayoutParams(-1, 0, 1f)
         )
 
@@ -483,10 +558,11 @@ class MainActivity : Activity() {
             return
         }
 
-        stopScroll()
+        stopPlayback()
 
         values.clear()
         values.add(number)
+        currentIndex = 0
 
         refresh()
 
@@ -536,17 +612,22 @@ class MainActivity : Activity() {
             try {
                 contentResolver.openInputStream(uri)?.use { stream ->
                     val incoming =
-                        BufferedReader(InputStreamReader(stream, Charsets.UTF_8))
+                        BufferedReader(
+                            InputStreamReader(stream, Charsets.UTF_8)
+                        )
                             .readLines()
                             .map { it.trim() }
                             .filter { it.isNotEmpty() }
 
+                    stopPlayback()
                     values.clear()
                     values.addAll(incoming)
-                }
+                    currentIndex = 0
 
-                refresh()
-                status.text = "${values.size} kayıt başarıyla yüklendi."
+                    refresh()
+                    status.text = "${values.size} kayıt başarıyla yüklendi."
+
+                }
 
             } catch (e: Exception) {
                 status.text = "Dosya okunamadı: ${e.localizedMessage}"
@@ -554,13 +635,17 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun makeBitmap(value: String): Bitmap {
+    private fun getCacheKey(value: String): String {
+        return "${mode.name}_$value"
+    }
+
+    private fun makeBitmap(value: String, selectedMode: Mode): Bitmap {
         val format =
-            if (mode == Mode.QR) BarcodeFormat.QR_CODE
+            if (selectedMode == Mode.QR) BarcodeFormat.QR_CODE
             else BarcodeFormat.CODE_128
 
-        val width = if (mode == Mode.QR) 280 else 900
-        val height = if (mode == Mode.QR) 280 else 230
+        val width = if (selectedMode == Mode.QR) 280 else 900
+        val height = if (selectedMode == Mode.QR) 280 else 230
 
         val hints = hashMapOf<EncodeHintType, Any>()
         hints[EncodeHintType.MARGIN] = 2
@@ -593,115 +678,153 @@ class MainActivity : Activity() {
     }
 
     private fun refresh() {
-        stopScroll()
+        stopPlayback()
 
-        container.removeAllViews()
-        imageViews.clear()
-
-        val qrMode = mode == Mode.QR
-
-        values.forEach { value ->
-
-            val image = ImageView(this).apply {
-                adjustViewBounds = true
-                scaleType = ImageView.ScaleType.FIT_CENTER
-                setPadding(dp(5), dp(4), dp(5), dp(4))
-            }
-
-            imageViews.add(image)
-
-            container.addView(
-                image,
-                LinearLayout.LayoutParams(
-                    -1,
-                    dp(if (qrMode) 210 else 100)
-                )
-            )
-
-            val label = TextView(this).apply {
-                text = value
-                textSize = 12f
-                setTextColor(Color.DKGRAY)
-                gravity = Gravity.CENTER
-                setPadding(dp(2), 0, dp(2), dp(7))
-            }
-
-            container.addView(label)
+        if (values.isEmpty()) {
+            generationToken++
+            resultImage.setImageDrawable(null)
+            resultLabel.text = "Henüz kod oluşturulmadı"
+            counterText.text = "000 / 000"
+            updateNavigationButtons()
+            status.text = "Hazır"
+            return
         }
 
+        currentIndex = currentIndex.coerceIn(0, values.lastIndex)
+        showIndex(currentIndex)
         status.text =
-            "${values.size} kod hazır • ${if (qrMode) "QR KOD" else "CODE128"}"
-
-        scroller.post {
-            scroller.scrollTo(0, 0)
-            renderVisibleItems()
-        }
+            "${values.size} kayıt hazır • ${if (mode == Mode.QR) "QR KOD" else "CODE128"}"
     }
 
-    private fun renderVisibleItems() {
-        if (imageViews.isEmpty()) return
+    private fun showIndex(index: Int) {
+        if (values.isEmpty()) return
 
-        val viewportTop = scroller.scrollY
-        val viewportBottom = viewportTop + scroller.height
+        currentIndex = index.coerceIn(0, values.lastIndex)
 
-        val extra = dp(100)
+        val value = values[currentIndex]
+        val selectedMode = mode
+        val token = ++generationToken
+        val cacheKey = getCacheKey(value)
 
-        imageViews.forEachIndexed { index, view ->
+        counterText.text =
+            "${currentIndex + 1} / ${values.size}"
 
-            val isVisible =
-                view.bottom >= viewportTop - extra &&
-                view.top <= viewportBottom + extra
+        resultLabel.text = value
+        resultImage.setImageDrawable(null)
 
-            if (isVisible) {
-                val value = values.getOrNull(index) ?: return@forEachIndexed
+        updateNavigationButtons()
 
-                if (view.tag != value) {
-                    try {
-                        view.setImageBitmap(makeBitmap(value))
-                        view.tag = value
-                    } catch (_: Exception) {
-                        view.setImageDrawable(null)
+        val cachedBitmap = bitmapCache.get(cacheKey)
+
+        if (cachedBitmap != null) {
+            resultImage.setImageBitmap(cachedBitmap)
+            prefetchNext()
+            return
+        }
+
+        status.text = "Kod hazırlanıyor..."
+
+        imageExecutor.execute {
+            try {
+                val bitmap = makeBitmap(value, selectedMode)
+                bitmapCache.put(cacheKey, bitmap)
+
+                handler.post {
+                    if (
+                        !isFinishing &&
+                        token == generationToken &&
+                        currentIndex in values.indices &&
+                        values[currentIndex] == value &&
+                        mode == selectedMode
+                    ) {
+                        resultImage.setImageBitmap(bitmap)
+                        status.text =
+                            "${currentIndex + 1} / ${values.size} kayıt gösteriliyor."
+                        prefetchNext()
                     }
                 }
 
-            } else if (view.tag != null) {
-                view.setImageDrawable(null)
-                view.tag = null
+            } catch (e: Exception) {
+                handler.post {
+                    if (token == generationToken) {
+                        status.text = "Kod oluşturulamadı: ${e.localizedMessage}"
+                    }
+                }
             }
         }
     }
 
-    private fun startScroll() {
-        if (running) return
+    private fun prefetchNext() {
+        val nextIndex = currentIndex + 1
+        if (nextIndex !in values.indices) return
 
+        val nextValue = values[nextIndex]
+        val selectedMode = mode
+        val cacheKey = getCacheKey(nextValue)
+
+        if (bitmapCache.get(cacheKey) != null) return
+
+        imageExecutor.execute {
+            try {
+                val bitmap = makeBitmap(nextValue, selectedMode)
+                bitmapCache.put(cacheKey, bitmap)
+            } catch (_: Exception) {
+                // Sonraki kod gerektiğinde yeniden hazırlanır.
+            }
+        }
+    }
+
+    private fun updateNavigationButtons() {
+        if (!::previousButton.isInitialized) return
+
+        previousButton.alpha =
+            if (currentIndex > 0 && values.isNotEmpty()) 1f else 0.4f
+
+        nextButton.alpha =
+            if (currentIndex < values.lastIndex && values.isNotEmpty()) 1f else 0.4f
+    }
+
+    private fun getInterval(): Long {
+        return 3200L - (speed.progress * 150L)
+    }
+
+    private fun startPlayback() {
         if (values.isEmpty()) {
             status.text = "Önce TXT yükle veya tekli kod oluştur."
             return
         }
 
+        if (currentIndex >= values.lastIndex) {
+            showIndex(0)
+        }
+
         running = true
         startButton.text = "▶ AKIŞ AKTİF"
-        status.text = "Akıcı otomatik akış başladı."
+        status.text = "Otomatik sıralama başladı."
 
-        scrollHandler.removeCallbacks(scrollRunnable)
-        scrollHandler.post(scrollRunnable)
+        restartTimer()
     }
 
-    private fun stopScroll() {
+    private fun restartTimer() {
+        handler.removeCallbacks(autoRunnable)
+        if (running) {
+            handler.postDelayed(autoRunnable, getInterval())
+        }
+    }
+
+    private fun stopPlayback() {
         running = false
-        scrollHandler.removeCallbacks(scrollRunnable)
+        handler.removeCallbacks(autoRunnable)
 
         if (::startButton.isInitialized) {
             startButton.text = "▶ BAŞLAT"
         }
-
-        if (::status.isInitialized && values.isNotEmpty()) {
-            status.text = "${values.size} kod hazır."
-        }
     }
 
     override fun onDestroy() {
-        stopScroll()
+        stopPlayback()
+        generationToken++
+        imageExecutor.shutdownNow()
         super.onDestroy()
     }
 }
